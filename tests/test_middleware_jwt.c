@@ -67,11 +67,15 @@ static void dummy_next(cwist_http_request *req, cwist_http_response *res) {
 static void test_jwt_middleware_secret_dedup(void) {
     printf("test_jwt_middleware_secret_dedup...\n");
 
-    char secret1[32];
-    char secret2[32];
+    /* cwist_mw_jwt_auth borrows the secret pointer (the static registration
+     * table outlives any single test), so the buffers must not be stack
+     * locals of this frame: a later registration call strcmp()s every
+     * stored secret, which ASAN flags as stack-use-after-scope. */
+    static char secret1[32];
+    static char secret2[32];
     strcpy(secret1, "secret_xyz");
     strcpy(secret2, "secret_xyz");
-    assert(secret1 != secret2); /* Different pointers with identical content */
+    assert(&secret1[0] != &secret2[0]); /* Different pointers with identical content */
 
     cwist_middleware_func mw1 = cwist_mw_jwt_auth(secret1);
     cwist_middleware_func mw2 = cwist_mw_jwt_auth(secret2);
