@@ -464,6 +464,7 @@ TEST_TARGETS = test_app_resource_limits \
                test_healthz \
                test_json_builder \
                test_flash \
+               test_middleware_jwt \
                test_sse \
                test_graphql \
                test_core_hardening \
@@ -599,6 +600,10 @@ test_json_builder: $(LIB_NAME) tests/test_json_builder.c
 test_flash: $(LIB_NAME) tests/test_flash.c
 	$(CC) $(CFLAGS) -o test_flash tests/test_flash.c $(LIB_NAME) $(LIBS)
 	./test_flash
+
+test_middleware_jwt: $(LIB_NAME) tests/test_middleware_jwt.c
+	$(CC) $(CFLAGS) -o test_middleware_jwt tests/test_middleware_jwt.c $(LIB_NAME) $(LIBS)
+	./test_middleware_jwt
 
 test_http: $(LIB_NAME) tests/test_http.c
 	$(CC) $(CFLAGS) -o test_http tests/test_http.c $(LIB_NAME) $(LIBS)
