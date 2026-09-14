@@ -9,15 +9,23 @@
 #include <cwist/net/http/http.h>
 #include <cwist/core/sstring/sstring.h>
 #include <cwist/core/mem/alloc.h>
+#include <cwist/sys/metrics/metrics.h>
 #include <stdio.h>
 #include <string.h>
 #include <strings.h>
 #include <assert.h>
 
 /* Minimal stubs for unused handlers in middleware.c */
-void *cwist_metrics_registry(void) { return NULL; }
-void cwist_metric_inc(void *m) { (void)m; }
-void cwist_metric_add(void *m, double v) { (void)m; (void)v; }
+cwist_metrics_registry_t *cwist_metrics_registry(void) { return NULL; }
+void cwist_metric_inc(cwist_metrics_registry_t *reg, cwist_metric_id_t id) {
+    (void)reg;
+    (void)id;
+}
+void cwist_metric_add(cwist_metrics_registry_t *reg, cwist_metric_id_t id, uintmax_t delta) {
+    (void)reg;
+    (void)id;
+    (void)delta;
+}
 cwist_sstring *cwist_get_client_ip_from_fd(int fd) { (void)fd; return NULL; }
 const char *cwist_http_method_to_string(cwist_http_method_t m) { (void)m; return "GET"; }
 
