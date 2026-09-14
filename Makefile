@@ -771,13 +771,10 @@ install: $(LIB_NAME) $(PC_FILE)
 		"$(BORINGSSL_DIR)/LICENSE:boringssl:LICENSE" \
 		"$(LSQUIC_DIR)/LICENSE:lsquic:LICENSE" \
 		"$(LSQUIC_DIR)/LICENSE.chrome:lsquic:LICENSE.chrome" \
-		"lib/nghttp3/COPYING:nghttp3:COPYING" \
-		"lib/ngtcp2/COPYING:ngtcp2:COPYING" \
 		"$(LIBTTAK_DIR)/LICENSE:libttak:LICENSE" \
 		"$(CJSON_DIR)/LICENSE:cjson:LICENSE" \
 		"lib/cnats/LICENSE:cnats:LICENSE" \
-		"$(URIPARSER_DIR)/COPYING.BSD-3-Clause:uriparser:COPYING.BSD-3-Clause" \
-		"lib/monocypher/LICENCE.md:monocypher:LICENCE.md"; do \
+		"$(URIPARSER_DIR)/COPYING.BSD-3-Clause:uriparser:COPYING.BSD-3-Clause"; do \
 		src="$${spec%%:*}"; rest="$${spec#*:}"; comp="$${rest%%:*}"; \
 		if [ -f "$$src" ]; then \
 			install -d $(DESTDIR)$(PREFIX)/share/doc/cwist/licenses/$$comp; \
