@@ -211,3 +211,26 @@ remains correct and simply unregisters the block early.
 - Kernel-level resources (file descriptors, TLS sessions) are closed
   deterministically by the exit sweeps; the epoch deferral governs only the
   memory reclamation behind them.
+
+## Known performance caveat
+
+Enabling `cwist_full_gc(true)` currently adds roughly **~86% per-call
+overhead** to every `cwist_alloc()` / `cwist_free()` pair — approximately
+10 ns per operation on a typical workstation — due to
+`cwist_gc_scope_track()` / `cwist_gc_scope_untrack()` maintaining a
+per-thread pending-sweep list on every allocation and release
+(`src/core/mem/gc.c`).
+
+The overhead breakdown and concurrent-load behaviour are tracked in
+[issue #65](https://github.com/c4punks/CWIST/issues/65). Two benchmark
+harnesses measure it from different angles: `tests/bench_malloc_intercept.c`
+covers the `CWIST_INTERCEPT_MALLOC` header shim, single-threaded;
+`tests/bench_malloc_intercept_concurrent.c` calls `cwist_alloc()`/
+`cwist_free()` directly and adds both single-threaded and multi-threaded
+runs, to check whether the pending-sweep list in `gc.c` becomes a
+contention bottleneck under concurrent load.
+
+**Practical guidance**: if you opt into full-GC mode on a high-throughput
+service, profile your allocation hot path first.  The overhead is only
+active when `cwist_full_gc(true)` has been called; all default builds
+(full-GC off) are unaffected.
