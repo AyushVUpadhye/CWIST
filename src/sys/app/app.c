@@ -2508,7 +2508,7 @@ static app_serve_result_t app_serve_parsed_request(cwist_app *app, int client_fd
             return APP_SERVE_CLOSE;
         }
 
-        /* RFC 9110 §9.3.2: HEAD replies carry the GET headers (Content-Length
+        /* RFC 9110 section 9.3.2: HEAD replies carry the GET headers (Content-Length
          * included) but no body bytes, for every route. */
         cwist_error_t send_err = (req->method == CWIST_HTTP_HEAD)
             ? cwist_http_send_response_head(client_fd, res)
