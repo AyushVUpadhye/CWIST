@@ -385,28 +385,29 @@ def render() -> None:
     if README_MD.exists(): replace(README_MD, "<!-- WEBSERVER_BENCHMARKS:START -->", "<!-- WEBSERVER_BENCHMARKS:END -->", ws_summary)
 
     tuned_rps = ws_latest.get("cwist_tuned_rps")
-    spring_tuned_rps = ws_latest.get("spring_tuned_rps")
+    axum_tuned_rps = ws_latest.get("axum_tuned_rps")
     if tuned_rps and README_MD.exists() and "<!-- TUNED_BENCHMARK:START -->" in README_MD.read_text():
         tuned_profile = ws_latest.get("tuned_profile") or "wrk -t4 -c100 -d10s"
-        # Spring Boot gets the identical -t4 -c100 profile below (same
-        # trained AOT cache, same reduced concurrency) so this line compares
-        # like with like instead of showing only CWIST's best case next to
-        # Spring's single -c400 number in the table above.
+        # Pair the tuned run with Axum, not Spring Boot. Both are compiled
+        # servers with no managed runtime, so the comparison says something
+        # about CWIST's own latency floor; beating a JVM server on latency and
+        # memory is not informative about that. Axum runs the identical
+        # -t4 -c100 profile (see the workflow's "Axum tuned" leg).
         tuned_line = (
-            f"**Tuned low-latency run ({tuned_profile}), CWIST vs Spring Boot on identical concurrency:**\n\n"
+            f"**Tuned low-latency run ({tuned_profile}), CWIST vs Axum on identical concurrency:**\n\n"
             f"- **CWIST**: {tuned_rps:,.0f} req/s at {ws_latest.get('cwist_tuned_lat_ms',0):.2f}ms average latency "
             f"(P50 {ws_latest.get('cwist_tuned_p50_ms',0):.2f}ms, P90 {ws_latest.get('cwist_tuned_p90_ms',0):.2f}ms, "
             f"P99 {ws_latest.get('cwist_tuned_p99_ms',0):.2f}ms)\n"
         )
-        if spring_tuned_rps:
+        if axum_tuned_rps:
             tuned_line += (
-                f"- **Spring Boot**: {spring_tuned_rps:,.0f} req/s at {ws_latest.get('spring_tuned_lat_ms',0):.2f}ms average latency "
-                f"(P50 {ws_latest.get('spring_tuned_p50_ms',0):.2f}ms, P90 {ws_latest.get('spring_tuned_p90_ms',0):.2f}ms, "
-                f"P99 {ws_latest.get('spring_tuned_p99_ms',0):.2f}ms), same trained AOT cache as the main run above\n"
+                f"- **Axum**: {axum_tuned_rps:,.0f} req/s at {ws_latest.get('axum_tuned_lat_ms',0):.2f}ms average latency "
+                f"(P50 {ws_latest.get('axum_tuned_p50_ms',0):.2f}ms, P90 {ws_latest.get('axum_tuned_p90_ms',0):.2f}ms, "
+                f"P99 {ws_latest.get('axum_tuned_p99_ms',0):.2f}ms), same binary as the main run above\n"
             )
         tuned_line += (
-            f"\nLeaving headroom between server workers and load-generator threads keeps the latency tail flat — "
-            f"oversubscribing the same cores shows a multi-ms average from scheduling jitter alone at similar throughput."
+            f"\nLeaving headroom between server workers and load-generator threads keeps the latency tail flat. "
+            f"Oversubscribing the same cores shows a multi-ms average from scheduling jitter alone at similar throughput."
         )
         replace(README_MD, "<!-- TUNED_BENCHMARK:START -->", "<!-- TUNED_BENCHMARK:END -->", tuned_line)
 

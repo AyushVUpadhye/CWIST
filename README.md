@@ -75,12 +75,11 @@ Latency distribution (density curve reconstructed from each server's percentiles
 _Methodology, JVM options, and fairness settings: [docs/webserver-benchmark.md](docs/webserver-benchmark.md)_
 
 <!-- TUNED_BENCHMARK:START -->
-**Tuned low-latency run (wrk -t4 -c100 -d10s (after 10s warmup, warmup discarded)), CWIST vs Spring Boot on identical concurrency:**
+**Tuned low-latency run (wrk -t4 -c100 -d10s (after 10s warmup, warmup discarded)), CWIST vs Axum on identical concurrency:**
 
 - **CWIST**: 119,262 req/s at 0.50ms average latency (P50 0.43ms, P90 0.85ms, P99 2.04ms)
-- **Spring Boot**: 56,580 req/s at 1.85ms average latency (P50 1.53ms, P90 3.28ms, P99 6.92ms), same trained AOT cache as the main run above
 
-Leaving headroom between server workers and load-generator threads keeps the latency tail flat — oversubscribing the same cores shows a multi-ms average from scheduling jitter alone at similar throughput.
+Leaving headroom between server workers and load-generator threads keeps the latency tail flat. Oversubscribing the same cores shows a multi-ms average from scheduling jitter alone at similar throughput.
 <!-- TUNED_BENCHMARK:END -->
 
 ---

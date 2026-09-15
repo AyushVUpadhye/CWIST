@@ -328,6 +328,13 @@ jobs:
           run_bench "CWIST tuned" "env CWIST_C1M_MODE=0 /tmp/cwist_server" 9091 "/tmp/cwist_tuned.txt" "/tmp/cwist_tuned_stat.txt" 10 4 100
           export TUNED_PROFILE="wrk -t4 -c100 -d10s (after 10s warmup, warmup discarded)"
           run_bench "Axum" "/tmp/axum_bench/target/release/axum_server" 9092 "/tmp/axum.txt" "/tmp/axum_stat.txt" 10
+          # Same -t4 -c100 profile as "CWIST tuned" above. The tuned section
+          # used to report CWIST against Spring Boot only, which compares a
+          # statically linked C server against a JVM one and says little about
+          # CWIST's own latency floor. Axum is the closest peer in the matrix
+          # (compiled, async, no managed runtime), so measure it at the tuned
+          # profile too and report that pairing instead.
+          run_bench "Axum tuned" "/tmp/axum_bench/target/release/axum_server" 9092 "/tmp/axum_tuned.txt" "/tmp/axum_tuned_stat.txt" 10 4 100
           run_bench "Gin" "/tmp/gin_bench/gin_server" 9094 "/tmp/gin.txt" "/tmp/gin_stat.txt" 10
 
           # Spring Boot JVM tuning (JDK 25):
@@ -516,6 +523,8 @@ jobs:
           axum_wrk = parse_wrk("/tmp/axum.txt")
           axum_rss, axum_csw = parse_stat("/tmp/axum_stat.txt")
 
+          axum_tuned_wrk = parse_wrk("/tmp/axum_tuned.txt")
+
           gin_wrk = parse_wrk("/tmp/gin.txt")
           gin_rss, gin_csw = parse_stat("/tmp/gin_stat.txt")
 
@@ -545,6 +554,10 @@ jobs:
               # so a report comparing "tuned" numbers is comparing like with
               # like instead of CWIST's best case against Spring's only case.
               **server_fields("spring_tuned", spring_tuned_wrk),
+              # Same -t4 -c100 profile as cwist_tuned_*. The tuned section of
+              # the report pairs CWIST with Axum, the closest peer in this
+              # matrix, rather than with the JVM server.
+              **server_fields("axum_tuned", axum_tuned_wrk),
               "wrk_profile": os.environ.get("WRK_PROFILE", ""),
               "tuned_profile": os.environ.get("TUNED_PROFILE", ""),
               "runner_hw": os.environ.get("RUNNER_HW", ""),
@@ -568,7 +581,7 @@ jobs:
       - name: Copy raw benchmark output
         run: |
           mkdir -p raw_logs
-          cp /tmp/cwist.txt /tmp/cwist_stat.txt /tmp/cwist_c1m.txt /tmp/cwist_c1m_stat.txt /tmp/cwist_c1m_arena1.txt /tmp/cwist_c1m_arena1_stat.txt /tmp/cwist_c1m_drainchunk.txt /tmp/cwist_c1m_drainchunk_stat.txt /tmp/cwist_tuned.txt /tmp/axum.txt /tmp/axum_stat.txt /tmp/gin.txt /tmp/gin_stat.txt /tmp/spring.txt /tmp/spring_stat.txt /tmp/spring_tuned.txt /tmp/spring_gc.log raw_logs/ 2>/dev/null || true
+          cp /tmp/cwist.txt /tmp/cwist_stat.txt /tmp/cwist_c1m.txt /tmp/cwist_c1m_stat.txt /tmp/cwist_c1m_arena1.txt /tmp/cwist_c1m_arena1_stat.txt /tmp/cwist_c1m_drainchunk.txt /tmp/cwist_c1m_drainchunk_stat.txt /tmp/cwist_tuned.txt /tmp/axum.txt /tmp/axum_tuned.txt /tmp/axum_stat.txt /tmp/gin.txt /tmp/gin_stat.txt /tmp/spring.txt /tmp/spring_stat.txt /tmp/spring_tuned.txt /tmp/spring_gc.log raw_logs/ 2>/dev/null || true
       - uses: actions/upload-artifact@v4
         with:
           name: webserver-result
