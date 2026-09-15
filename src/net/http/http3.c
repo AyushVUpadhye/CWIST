@@ -1817,9 +1817,13 @@ static void cwist_h3_wt_on_session_rejected(void *ctx,
     (void)reason_len;
 }
 
+/* WebTransport application error codes are 32-bit on the wire. The lsquic
+ * WebTransport branch declared these two callbacks with uint64_t when this
+ * code was written; the branch head (litespeedtech/lsquic#629) narrows both
+ * to uint32_t. */
 static void cwist_h3_wt_on_session_close(lsquic_wt_session_t *sess,
                                          lsquic_wt_session_ctx_t *sess_ctx,
-                                         uint64_t code, const char *reason,
+                                         uint32_t code, const char *reason,
                                          size_t reason_len) {
     (void)sess;
     (void)code;
@@ -1883,7 +1887,7 @@ static void cwist_h3_wt_on_stream_close(lsquic_stream_t *stream,
     cwist_wt_handle_free((cwist_wt_handle_t *)st_h);
 }
 
-static uint64_t cwist_h3_wt_on_stream_ss_code(lsquic_stream_t *stream,
+static uint32_t cwist_h3_wt_on_stream_ss_code(lsquic_stream_t *stream,
                                               lsquic_stream_ctx_t *st_h) {
     (void)stream;
     (void)st_h;

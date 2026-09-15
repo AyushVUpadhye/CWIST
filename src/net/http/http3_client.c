@@ -321,8 +321,12 @@ h3c_wt_on_session_rejected(void *ctx, const struct lsquic_wt_connect_info *info,
 }
 
 static void
+/* wti_on_session_close takes the WebTransport application error code, which
+ * is 32-bit on the wire. It was uint64_t in the older state of the lsquic
+ * WebTransport branch this file was first written against; the branch head
+ * (litespeedtech/lsquic#629) narrows it to uint32_t. */
 h3c_wt_on_session_close(lsquic_wt_session_t *native, lsquic_wt_session_ctx_t *ctx,
-                        uint64_t code, const char *reason, size_t reason_len) {
+                        uint32_t code, const char *reason, size_t reason_len) {
     (void)native; (void)code; (void)reason; (void)reason_len;
     cwist_webtransport_client_session *session =
         (cwist_webtransport_client_session *)ctx;
@@ -719,7 +723,10 @@ cwist_http3_client *cwist_http3_client_create(void) {
     settings.es_datagrams = client->datagram_enabled ? 1 : 0;
 #ifdef CWIST_WEBTRANSPORT
     settings.es_webtransport = 1;
-    settings.es_max_webtransport_sessions = 4;
+    /* lsquic_engine.c rejects anything above 1: the WebTransport
+     * implementation on litespeedtech/lsquic#629 carries one session per
+     * connection. The server side (http3.c) already sets 1. */
+    settings.es_max_webtransport_sessions = 1;
     settings.es_http_datagrams = 1;
     settings.es_reset_stream_at = 1;
 #endif

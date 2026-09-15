@@ -130,6 +130,16 @@ SQLITE_ZIP = sqlite-amalgamation-$(SQLITE_VER).zip
 SQLITE_URL = https://www.sqlite.org/$(SQLITE_YEAR)/$(SQLITE_ZIP)
 SQLITE_DIR = lib/sqlite3
 
+# WebTransport client (src/net/http/http3_client.c).  Built on the lsquic API
+# proposed in litespeedtech/lsquic#629, which is what lib/lsquic is pinned to
+# on this branch, so it is compiled here.  main pins lsquic master, which does
+# not carry that API, and carries no WebTransport source either.  Set
+# CWIST_WEBTRANSPORT=0 to leave it out.
+CWIST_WEBTRANSPORT ?= 1
+ifeq ($(CWIST_WEBTRANSPORT),1)
+    CFLAGS += -DCWIST_WEBTRANSPORT
+endif
+
 # Detect OS
 IO_SRC = src/sys/io/io_select.c # Default fallback
 
@@ -320,6 +330,17 @@ clean-wasm:
 # Object Files and Target
 OBJS = $(SRCS:.c=.o)
 LIB_NAME = libcwist.a
+
+# Rebuild every object when the compile flags change.  CWIST_WEBTRANSPORT adds
+# and removes struct members in http3.c, so flipping it without a clean left a
+# library holding objects built both ways: the layouts disagreed and the result
+# was a stack smash at runtime, not a compile error.  .build-flags records the
+# flags and every object depends on it, so a changed flag forces a rebuild.
+.build-flags: FORCE
+	@printf '%s' '$(CFLAGS)' | cmp -s - $@ || printf '%s' '$(CFLAGS)' > $@
+FORCE:
+.PHONY: FORCE
+$(OBJS): .build-flags
 LIBTTAK_DIR = lib/libttak
 LIBTTAK_LIB = $(LIBTTAK_DIR)/lib/libttak.a
 LIBTTAK_EXTRA_CFLAGS =
