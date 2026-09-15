@@ -23,13 +23,13 @@ reaches 0.41ms average at ~155k req/s).
 
 <!-- WEBSERVER_BENCHMARKS:START -->
 Latest Web Server Benchmark (wrk -t12 -c400 -d10s (after 10s warmup, warmup discarded)):
-- **CWIST (classic pool)**: 114850 req/s | Latency 2.03ms (P90 4.24ms, P99 7.94ms, P99.999 28.96ms) | RSS 15640KiB | Csw 0
-- **CWIST (C1M reactor)**: 140509 req/s | Latency 3.05ms (P90 7.61ms, P99 14.78ms, P99.999 25.73ms) | RSS 10236KiB | Csw 0
-- **CWIST (C1M reactor, arena_max=1)** — glibc arena cap adopted in PR #35 after mimalloc was tried and refuted (issue #25); this line confirms the decision on every run: 140220 req/s | Latency 3.01ms (P90 7.53ms, P99 14.16ms, P99.999 23.18ms) | RSS 11512KiB | Csw 0
-- **CWIST (C1M reactor, drain_chunk=8)** — cooperative queuing for cwist_async_defer completions within a big io_uring batch (issue #25, docs/cooperative-queuing.md); this workload has no cwist_async_defer traffic to interleave, so parity with the plain C1M row above is the expected result, not a null finding — the tail-latency win is isolated directly in tests/bench_cooperative_queuing.c: 140952 req/s | Latency 2.99ms (P90 7.45ms, P99 14.38ms, P99.999 25.36ms) | RSS 10268KiB | Csw 0
-- **Axum**: 111184 req/s | Latency 3.53ms (P90 5.94ms, P99 8.83ms, P99.999 16.40ms) | RSS 16080KiB | Csw 0
-- **Gin (Go)**: 79036 req/s | Latency 6.80ms (P90 16.36ms, P99 36.77ms, P99.999 88.08ms) | RSS 29956KiB | Csw 0
-- **Spring Boot**: 45600 req/s | Latency 8.78ms (P90 11.35ms, P99 18.84ms, P99.999 96.96ms) | RSS 1313272KiB | Csw 0
+- **CWIST (classic pool)**: 112955 req/s | Latency 2.05ms (P90 4.34ms, P99 7.98ms, P99.999 23.87ms) | RSS 16028KiB | Csw 0
+- **CWIST (C1M reactor)**: 138759 req/s | Latency 3.09ms (P90 7.80ms, P99 14.79ms, P99.999 25.85ms) | RSS 10328KiB | Csw 0
+- **CWIST (C1M reactor, arena_max=1)** — glibc arena cap adopted in PR #35 after mimalloc was tried and refuted (issue #25); this line confirms the decision on every run: 139016 req/s | Latency 3.06ms (P90 7.67ms, P99 14.52ms, P99.999 25.84ms) | RSS 11660KiB | Csw 0
+- **CWIST (C1M reactor, drain_chunk=8)** — cooperative queuing for cwist_async_defer completions within a big io_uring batch (issue #25, docs/cooperative-queuing.md); this workload has no cwist_async_defer traffic to interleave, so parity with the plain C1M row above is the expected result, not a null finding — the tail-latency win is isolated directly in tests/bench_cooperative_queuing.c: 138760 req/s | Latency 3.11ms (P90 7.87ms, P99 14.95ms, P99.999 23.76ms) | RSS 10248KiB | Csw 0
+- **Axum**: 109361 req/s | Latency 3.59ms (P90 6.02ms, P99 8.83ms, P99.999 14.78ms) | RSS 18056KiB | Csw 0
+- **Gin (Go)**: 78680 req/s | Latency 6.81ms (P90 16.12ms, P99 38.59ms, P99.999 92.81ms) | RSS 30160KiB | Csw 0
+- **Spring Boot**: 43005 req/s | Latency 9.24ms (P90 12.37ms, P99 19.80ms, P99.999 67.20ms) | RSS 1349032KiB | Csw 0
 
 **Spring runtime environment**
 
@@ -77,8 +77,8 @@ _Methodology, JVM options, and fairness settings: [docs/webserver-benchmark.md](
 <!-- TUNED_BENCHMARK:START -->
 **Tuned low-latency run (wrk -t4 -c100 -d10s (after 10s warmup, warmup discarded)), CWIST vs Axum on identical concurrency:**
 
-- **CWIST**: 116,354 req/s at 0.53ms average latency (P50 0.43ms, P90 0.93ms, P99 2.24ms)
-- **Axum**: 118,560 req/s at 0.79ms average latency (P50 0.69ms, P90 1.45ms, P99 2.58ms), same binary as the main run above
+- **CWIST**: 115,203 req/s at 0.54ms average latency (P50 0.41ms, P90 1.04ms, P99 2.38ms)
+- **Axum**: 119,750 req/s at 0.79ms average latency (P50 0.69ms, P90 1.44ms, P99 2.55ms), same binary as the main run above
 
 Leaving headroom between server workers and load-generator threads keeps the latency tail flat. Oversubscribing the same cores shows a multi-ms average from scheduling jitter alone at similar throughput.
 <!-- TUNED_BENCHMARK:END -->
