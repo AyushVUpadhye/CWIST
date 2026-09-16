@@ -1585,7 +1585,7 @@ void cwist_http_response_set_alt_svc(cwist_http_response *res, const char *alt_s
         res->alt_svc = NULL;
     }
     if (alt_svc) {
-        res->alt_svc = strdup(alt_svc);
+        res->alt_svc = cwist_strdup(alt_svc);
     }
 }
 
