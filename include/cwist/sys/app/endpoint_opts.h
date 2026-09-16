@@ -18,7 +18,7 @@
 typedef uint32_t cwist_endpoint_opt_t;
 
 /** Immediate execution with no special tuning (default). */
-#define CWIST_DYNAMIC         (1u << 0)
+#define CWIST_DYNAMIC (1u << 0)
 /**
  * Hint that the route's response is request-invariant.
  *
@@ -29,9 +29,9 @@ typedef uint32_t cwist_endpoint_opt_t;
  * CWIST_ENDPOINT_PUBLIC_FIXED opt-in (see docs/fixed-cache-status.md and
  * ADR-0001, draft PR #85). The flag is retained for source compatibility.
  */
-#define CWIST_ENDPOINT_FIXED  (1u << 1)
+#define CWIST_ENDPOINT_FIXED (1u << 1)
 /** Serve large files using OS-specific zero-copy fast paths. */
-#define CWIST_ENDPOINT_FILE   (1u << 2)
+#define CWIST_ENDPOINT_FILE (1u << 2)
 
 /** @brief Default option for new endpoints. */
 #define CWIST_ENDPOINT_DEFAULT (CWIST_DYNAMIC)

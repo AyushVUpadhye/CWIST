@@ -19,9 +19,7 @@ static void on_signal(int signo) {
     if (g_ctx) g_ctx->running = 0;
 }
 
-static void http_fallback(void *user_ctx,
-                          cwist_http_request *req,
-                          cwist_http_response *res) {
+static void http_fallback(void *user_ctx, cwist_http_request *req, cwist_http_response *res) {
     (void)user_ctx;
     (void)req;
     res->status_code = CWIST_HTTP_OK;
@@ -50,9 +48,7 @@ static void on_wt_stream(void *stream, void *user_ctx) {
     cwist_webtransport_flush(stream);
 }
 
-static void on_wt_session(cwist_http_request *req,
-                          cwist_http_response *res,
-                          void *session) {
+static void on_wt_session(cwist_http_request *req, cwist_http_response *res, void *session) {
     const char *path = req && req->path ? req->path->data : "";
     if (strcmp(path, "/wt") != 0) {
         res->status_code = CWIST_HTTP_NOT_FOUND;

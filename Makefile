@@ -1178,3 +1178,22 @@ test_webtransport: $(LIB_NAME) tests/test_webtransport.c
 	$(CC) $(CFLAGS) -o test_webtransport tests/test_webtransport.c $(LIB_NAME) $(LIBS)
 	./test_webtransport
 
+
+# ---------------------------------------------------------------------------
+# Source formatting (clang-format; rules and their rationale in .clang-format)
+#
+# Scoped to the trees CWIST owns.  lib/ is vendored and carries its own
+# .clang-format with DisableFormat, so it stays untouched either way.
+# ---------------------------------------------------------------------------
+FORMAT_DIRS := src include tests example benchmarks
+FORMAT_FILES := $(shell find $(FORMAT_DIRS) -type f \( -name '*.c' -o -name '*.h' \) 2>/dev/null | sort)
+
+.PHONY: format format-check
+
+format:
+	@clang-format -i $(FORMAT_FILES)
+	@echo "clang-format: reformatted $(words $(FORMAT_FILES)) files in $(FORMAT_DIRS)"
+
+format-check:
+	@clang-format --dry-run --Werror $(FORMAT_FILES)
+	@echo "clang-format: $(words $(FORMAT_FILES)) files already conform"

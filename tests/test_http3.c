@@ -13,18 +13,15 @@
 #include <fcntl.h>
 
 #define TEST_CERT "example/othello-web/server.crt"
-#define TEST_KEY  "example/othello-web/server.key"
+#define TEST_KEY "example/othello-web/server.key"
 
-int cwist_http3_normalize_response_header_name(const char *name,
-                                               char *out,
-                                               size_t out_len);
+int cwist_http3_normalize_response_header_name(const char *name, char *out, size_t out_len);
 int cwist_http3_response_header_value_is_safe(const char *value);
 int cwist_http3_method_is_idempotent(const char *method_str);
 
 static volatile int g_handler_called = 0;
 
-static void http3_test_handler(void *user_ctx, cwist_http_request *req,
-                               cwist_http_response *res) {
+static void http3_test_handler(void *user_ctx, cwist_http_request *req, cwist_http_response *res) {
     (void)user_ctx;
     (void)req;
     (void)res;
@@ -56,8 +53,7 @@ int main(void) {
 
     /* --- Test 2: init_context with missing cert --- */
     ctx = NULL;
-    err = cwist_http3_init_context(&ctx, "/nonexistent/cert.pem",
-                                   "/nonexistent/key.pem");
+    err = cwist_http3_init_context(&ctx, "/nonexistent/cert.pem", "/nonexistent/key.pem");
     assert(err.error.err_i16 == -1);
     assert(ctx == NULL);
     printf("[PASS] HTTP/3 context fails gracefully with missing PEM files.\n");
@@ -91,7 +87,7 @@ int main(void) {
     printf("[PASS] HTTP/3 server_loop rejects NULL handler.\n");
 
     /* --- Test 5: server_loop runs and stops gracefully --- */
-    server_thread_args_t args = { .udp_fd = udp_fd, .ctx = ctx };
+    server_thread_args_t args = {.udp_fd = udp_fd, .ctx = ctx};
     pthread_t tid;
     int rc = pthread_create(&tid, NULL, http3_server_thread, &args);
     assert(rc == 0);
@@ -134,20 +130,13 @@ int main(void) {
 
     /* --- Test 7: response header normalization for browser strictness --- */
     char h3_name[64];
-    assert(cwist_http3_normalize_response_header_name("Set-Cookie",
-                                                       h3_name,
-                                                       sizeof(h3_name)) == 0);
+    assert(cwist_http3_normalize_response_header_name("Set-Cookie", h3_name, sizeof(h3_name)) == 0);
     assert(strcmp(h3_name, "set-cookie") == 0);
-    assert(cwist_http3_normalize_response_header_name("Location",
-                                                       h3_name,
-                                                       sizeof(h3_name)) == 0);
+    assert(cwist_http3_normalize_response_header_name("Location", h3_name, sizeof(h3_name)) == 0);
     assert(strcmp(h3_name, "location") == 0);
-    assert(cwist_http3_normalize_response_header_name(":bad",
-                                                       h3_name,
-                                                       sizeof(h3_name)) == -1);
-    assert(cwist_http3_normalize_response_header_name("Bad Header",
-                                                       h3_name,
-                                                       sizeof(h3_name)) == -1);
+    assert(cwist_http3_normalize_response_header_name(":bad", h3_name, sizeof(h3_name)) == -1);
+    assert(cwist_http3_normalize_response_header_name("Bad Header", h3_name, sizeof(h3_name)) ==
+           -1);
     assert(cwist_http3_response_header_value_is_safe("sid=gone; Path=/; Max-Age=0"));
     assert(!cwist_http3_response_header_value_is_safe("ok\r\nbad: value"));
     printf("[PASS] HTTP/3 response headers are lowercased and CRLF-safe.\n");
@@ -215,15 +204,14 @@ int main(void) {
     socklen_t addr_len = sizeof(addr);
     assert(getsockname(udp_fd, (struct sockaddr *)&addr, &addr_len) == 0);
 
-    server_thread_args_t args10 = { .udp_fd = udp_fd, .ctx = ctx };
+    server_thread_args_t args10 = {.udp_fd = udp_fd, .ctx = ctx};
     rc = pthread_create(&tid, NULL, http3_server_thread, &args10);
     assert(rc == 0);
     usleep(50000);
 
     cwist_http3_client *client = cwist_http3_client_create();
     assert(client != NULL);
-    assert(cwist_http3_client_set_server(client, "127.0.0.1",
-                                         ntohs(addr.sin_port)) == 0);
+    assert(cwist_http3_client_set_server(client, "127.0.0.1", ntohs(addr.sin_port)) == 0);
     cwist_http3_client_set_timeout_ms(client, 10000);
     cwist_http3_client_set_conn_timeout_ms(client, 10000);
 
@@ -232,8 +220,7 @@ int main(void) {
      * error, not a crash or a fake response. */
     g_handler_called = 0;
     cwist_http_response *res = NULL;
-    err = cwist_http3_client_request(client, "/", CWIST_HTTP_GET,
-                                     NULL, NULL, 0, &res);
+    err = cwist_http3_client_request(client, "/", CWIST_HTTP_GET, NULL, NULL, 0, &res);
     assert(err.error.err_i16 != 0);
     assert(res == NULL);
     assert(g_handler_called == 0);
@@ -245,8 +232,7 @@ int main(void) {
     /* Well-formed request: handler runs, 200 comes back. */
     g_handler_called = 0;
     res = NULL;
-    err = cwist_http3_client_request(client, "/", CWIST_HTTP_GET,
-                                     NULL, NULL, 0, &res);
+    err = cwist_http3_client_request(client, "/", CWIST_HTTP_GET, NULL, NULL, 0, &res);
     assert(err.error.err_i16 == 0);
     assert(res != NULL);
     assert(g_handler_called == 1);
@@ -259,8 +245,7 @@ int main(void) {
     cwist_http_header_node *hdrs = NULL;
     cwist_http_header_add(&hdrs, ":bogus", "1");
     res = NULL;
-    err = cwist_http3_client_request(client, "/", CWIST_HTTP_GET,
-                                     hdrs, NULL, 0, &res);
+    err = cwist_http3_client_request(client, "/", CWIST_HTTP_GET, hdrs, NULL, 0, &res);
     cwist_http_header_free_all(hdrs);
     assert(err.error.err_i16 == 0);
     assert(res != NULL);
@@ -273,8 +258,7 @@ int main(void) {
      * the client always sends :scheme and :path, so this must be rejected. */
     g_handler_called = 0;
     res = NULL;
-    err = cwist_http3_client_request(client, "/", CWIST_HTTP_CONNECT,
-                                     NULL, NULL, 0, &res);
+    err = cwist_http3_client_request(client, "/", CWIST_HTTP_CONNECT, NULL, NULL, 0, &res);
     assert(err.error.err_i16 == 0);
     assert(res != NULL);
     assert(res->status_code == CWIST_HTTP_BAD_REQUEST);
@@ -305,7 +289,7 @@ int main(void) {
     addr_len = sizeof(addr);
     assert(getsockname(udp_fd, (struct sockaddr *)&addr, &addr_len) == 0);
 
-    server_thread_args_t args11 = { .udp_fd = udp_fd, .ctx = ctx };
+    server_thread_args_t args11 = {.udp_fd = udp_fd, .ctx = ctx};
     rc = pthread_create(&tid, NULL, http3_server_thread, &args11);
     assert(rc == 0);
     usleep(50000);
@@ -313,16 +297,14 @@ int main(void) {
     client = cwist_http3_client_create();
     assert(client != NULL);
     /* TEST_CERT is issued for CN=localhost */
-    assert(cwist_http3_client_set_server(client, "localhost",
-                                         ntohs(addr.sin_port)) == 0);
+    assert(cwist_http3_client_set_server(client, "localhost", ntohs(addr.sin_port)) == 0);
     assert(cwist_http3_client_set_ca_bundle(client, TEST_CERT) == 0);
     cwist_http3_client_set_timeout_ms(client, 10000);
     cwist_http3_client_set_conn_timeout_ms(client, 10000);
 
     g_handler_called = 0;
     res = NULL;
-    err = cwist_http3_client_request(client, "/", CWIST_HTTP_GET,
-                                     NULL, NULL, 0, &res);
+    err = cwist_http3_client_request(client, "/", CWIST_HTTP_GET, NULL, NULL, 0, &res);
     assert(err.error.err_i16 == 0);
     assert(res != NULL);
     assert(res->status_code == 200);

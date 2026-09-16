@@ -42,8 +42,7 @@ void cwist_http3_client_destroy(cwist_http3_client *client);
  * @param port Server UDP port.
  * @return 0 on success, -1 on failure.
  */
-int cwist_http3_client_set_server(cwist_http3_client *client,
-                                  const char *host, uint16_t port);
+int cwist_http3_client_set_server(cwist_http3_client *client, const char *host, uint16_t port);
 
 /**
  * @brief Load CA bundle for TLS certificate verification.
@@ -53,8 +52,7 @@ int cwist_http3_client_set_server(cwist_http3_client *client,
  *        use cwist_http3_client_set_insecure() to opt out.
  * @return 0 on success, -1 on failure.
  */
-int cwist_http3_client_set_ca_bundle(cwist_http3_client *client,
-                                     const char *ca_path);
+int cwist_http3_client_set_ca_bundle(cwist_http3_client *client, const char *ca_path);
 
 /**
  * @brief Disable or re-enable TLS certificate verification.
@@ -72,8 +70,7 @@ void cwist_http3_client_set_insecure(cwist_http3_client *client, int enabled);
  * @param client Client handle.
  * @param timeout_ms Timeout, 0 for default (30000).
  */
-void cwist_http3_client_set_timeout_ms(cwist_http3_client *client,
-                                       int timeout_ms);
+void cwist_http3_client_set_timeout_ms(cwist_http3_client *client, int timeout_ms);
 
 /**
  * @brief Enable or disable 0-RTT session resumption.
@@ -95,8 +92,7 @@ void cwist_http3_client_enable_0rtt(cwist_http3_client *client, int enabled);
  * @param client Client handle.
  * @param enabled Non-zero to enable (default: 0).
  */
-void cwist_http3_client_enable_datagrams(cwist_http3_client *client,
-                                         int enabled);
+void cwist_http3_client_enable_datagrams(cwist_http3_client *client, int enabled);
 
 /**
  * @brief Set the maximum number of request retries on transient failure.
@@ -108,8 +104,7 @@ void cwist_http3_client_enable_datagrams(cwist_http3_client *client,
  * @param client     Client handle.
  * @param max_retries Maximum retry count (0 to disable).
  */
-void cwist_http3_client_set_max_retries(cwist_http3_client *client,
-                                        int max_retries);
+void cwist_http3_client_set_max_retries(cwist_http3_client *client, int max_retries);
 
 /**
  * @brief Set the base delay between retries in milliseconds.
@@ -120,8 +115,7 @@ void cwist_http3_client_set_max_retries(cwist_http3_client *client,
  * @param client   Client handle.
  * @param delay_ms Base delay in milliseconds.
  */
-void cwist_http3_client_set_retry_delay_ms(cwist_http3_client *client,
-                                           int delay_ms);
+void cwist_http3_client_set_retry_delay_ms(cwist_http3_client *client, int delay_ms);
 
 /**
  * @brief Set the connection establishment / stream creation timeout.
@@ -132,8 +126,7 @@ void cwist_http3_client_set_retry_delay_ms(cwist_http3_client *client,
  * @param client     Client handle.
  * @param timeout_ms Timeout in milliseconds.
  */
-void cwist_http3_client_set_conn_timeout_ms(cwist_http3_client *client,
-                                            int timeout_ms);
+void cwist_http3_client_set_conn_timeout_ms(cwist_http3_client *client, int timeout_ms);
 
 /** @} */
 
@@ -159,13 +152,10 @@ void cwist_http3_client_set_conn_timeout_ms(cwist_http3_client *client,
  * @param out_response  Output pointer for parsed response.
  * @return CWIST error, err_i16 == 0 on success.
  */
-cwist_error_t cwist_http3_client_request(cwist_http3_client *client,
-                                         const char *path,
+cwist_error_t cwist_http3_client_request(cwist_http3_client *client, const char *path,
                                          cwist_http_method_t method,
-                                         cwist_http_header_node *headers,
-                                         const char *body,
-                                         size_t body_len,
-                                         cwist_http_response **out_response);
+                                         cwist_http_header_node *headers, const char *body,
+                                         size_t body_len, cwist_http_response **out_response);
 
 /** @} */
 
@@ -183,8 +173,7 @@ cwist_error_t cwist_http3_client_request(cwist_http3_client *client,
  * @param len    Payload length.
  * @return 0 on success, -1 on failure.
  */
-int cwist_http3_client_send_datagram(cwist_http3_client *client,
-                                     const void *data, size_t len);
+int cwist_http3_client_send_datagram(cwist_http3_client *client, const void *data, size_t len);
 
 /**
  * @brief Receive an unreliable QUIC datagram.
@@ -197,8 +186,7 @@ int cwist_http3_client_send_datagram(cwist_http3_client *client,
  * @param len    Buffer capacity.
  * @return Number of bytes received, or -1 on error.
  */
-ssize_t cwist_http3_client_recv_datagram(cwist_http3_client *client,
-                                         void *buf, size_t len);
+ssize_t cwist_http3_client_recv_datagram(cwist_http3_client *client, void *buf, size_t len);
 
 /** @} */
 
@@ -219,24 +207,22 @@ ssize_t cwist_http3_client_recv_datagram(cwist_http3_client *client,
  * @param out_session Receives the connected session.
  * @return CWIST error, err_i16 == 0 on success.
  */
-cwist_error_t cwist_http3_client_webtransport_connect(
-    cwist_http3_client *client, const char *path, const char *origin,
-    cwist_webtransport_client_session **out_session);
+cwist_error_t
+cwist_http3_client_webtransport_connect(cwist_http3_client *client, const char *path,
+                                        const char *origin,
+                                        cwist_webtransport_client_session **out_session);
 
 /** Progress an active WebTransport client's UDP and QUIC state machine. */
 int cwist_webtransport_client_poll(cwist_http3_client *client, int timeout_ms);
 
 /** Return non-zero while the peer has not closed the session. */
-int cwist_webtransport_client_is_open(
-    const cwist_webtransport_client_session *session);
+int cwist_webtransport_client_is_open(const cwist_webtransport_client_session *session);
 
 /** Open a client-initiated bidirectional WebTransport data stream. */
-void *cwist_webtransport_client_open_bidi(
-    cwist_webtransport_client_session *session);
+void *cwist_webtransport_client_open_bidi(cwist_webtransport_client_session *session);
 
 /** Open a client-initiated unidirectional WebTransport data stream. */
-void *cwist_webtransport_client_open_uni(
-    cwist_webtransport_client_session *session);
+void *cwist_webtransport_client_open_uni(cwist_webtransport_client_session *session);
 
 /** Non-blocking I/O helpers for streams returned by the open functions. */
 ssize_t cwist_webtransport_client_stream_read(void *stream, void *buf, size_t len);
@@ -245,26 +231,23 @@ int cwist_webtransport_client_stream_flush(void *stream);
 int cwist_webtransport_client_stream_close(void *stream);
 
 /** Send an unreliable datagram in this WebTransport session. */
-ssize_t cwist_webtransport_client_send_datagram(
-    cwist_webtransport_client_session *session, const void *data, size_t len);
+ssize_t cwist_webtransport_client_send_datagram(cwist_webtransport_client_session *session,
+                                                const void *data, size_t len);
 
 /** Close the session; its storage is released with the owning HTTP/3 client. */
-int cwist_webtransport_client_close(cwist_webtransport_client_session *session,
-                                    uint64_t code, const char *reason);
+int cwist_webtransport_client_close(cwist_webtransport_client_session *session, uint64_t code,
+                                    const char *reason);
 
 /** @} */
 
 /** @name Resilience */
 /** @{ */
 
-void cwist_http3_client_set_max_retries(cwist_http3_client *client,
-                                        int max_retries);
+void cwist_http3_client_set_max_retries(cwist_http3_client *client, int max_retries);
 
-void cwist_http3_client_set_retry_delay_ms(cwist_http3_client *client,
-                                           int delay_ms);
+void cwist_http3_client_set_retry_delay_ms(cwist_http3_client *client, int delay_ms);
 
-void cwist_http3_client_set_conn_timeout_ms(cwist_http3_client *client,
-                                            int timeout_ms);
+void cwist_http3_client_set_conn_timeout_ms(cwist_http3_client *client, int timeout_ms);
 
 /** @} */
 
