@@ -1185,8 +1185,12 @@ test_webtransport: $(LIB_NAME) tests/test_webtransport.c
 # Scoped to the trees CWIST owns.  lib/ is vendored and carries its own
 # .clang-format with DisableFormat, so it stays untouched either way.
 # ---------------------------------------------------------------------------
+# Tracked files only: `make test` drops generated headers (tests/*.cwist.pb.h)
+# into these trees, and a plain find would format build output and then fail
+# format-check on it.
 FORMAT_DIRS := src include tests example benchmarks
-FORMAT_FILES := $(shell find $(FORMAT_DIRS) -type f \( -name '*.c' -o -name '*.h' \) 2>/dev/null | sort)
+FORMAT_FILES := $(shell git ls-files $(FORMAT_DIRS) 2>/dev/null | grep -E '\.(c|h)$$' \
+                  || find $(FORMAT_DIRS) -type f \( -name '*.c' -o -name '*.h' \) | sort)
 
 .PHONY: format format-check
 
