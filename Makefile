@@ -557,6 +557,7 @@ TEST_TARGETS = test_worker_affinity \
                test_cache \
                test_bdr \
                test_secure_headers \
+               test_profile \
                test_http_chunked \
                test_static_and_range \
                test_session \
@@ -790,6 +791,10 @@ test_access_log: $(LIB_NAME) tests/test_access_log.c
 test_secure_headers: $(LIB_NAME) tests/test_secure_headers.c
 	$(CC) $(CFLAGS) -o test_secure_headers tests/test_secure_headers.c $(LIB_NAME) $(LIBS)
 	./test_secure_headers
+
+test_profile: $(LIB_NAME) tests/test_profile.c
+	$(CC) $(CFLAGS) -o test_profile tests/test_profile.c $(LIB_NAME) $(LIBS)
+	./test_profile
 
 test_rate_limit: $(LIB_NAME) tests/test_rate_limit.c
 	$(CC) $(CFLAGS) -o test_rate_limit tests/test_rate_limit.c $(LIB_NAME) $(LIBS)
