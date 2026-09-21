@@ -158,47 +158,21 @@ int main(void) {
 
 <!-- WEBSERVER_BENCHMARKS:START -->
 Latest Web Server Benchmark (wrk -t12 -c400 -d10s (after 10s warmup, warmup discarded)):
-- **CWIST (classic pool)**: 151873 req/s | Latency 1.56ms (P90 3.47ms, P99 6.79ms, P99.999 41.41ms) | RSS 17212KiB | Csw 0
-- **CWIST (C1M reactor)**: 182979 req/s | Latency 2.67ms (P90 7.29ms, P99 14.49ms, P99.999 25.53ms) | RSS 11452KiB | Csw 0
-- **CWIST (C1M reactor, arena_max=1)** — glibc arena cap adopted in PR #35 after mimalloc was tried and refuted (issue #25); this line confirms the decision on every run: 182791 req/s | Latency 2.75ms (P90 7.62ms, P99 14.75ms, P99.999 24.02ms) | RSS 11872KiB | Csw 0
-- **CWIST (C1M reactor, drain_chunk=8)** — cooperative queuing for cwist_async_defer completions within a big io_uring batch (issue #25, docs/cooperative-queuing.md); this workload has no cwist_async_defer traffic to interleave, so parity with the plain C1M row above is the expected result, not a null finding — the tail-latency win is isolated directly in tests/bench_cooperative_queuing.c: 178920 req/s | Latency 2.85ms (P90 7.81ms, P99 15.20ms, P99.999 28.55ms) | RSS 11424KiB | Csw 0
-- **Axum**: 150456 req/s | Latency 2.62ms (P90 4.54ms, P99 6.89ms, P99.999 14.77ms) | RSS 17068KiB | Csw 0
-- **Gin (Go)**: 114630 req/s | Latency 4.74ms (P90 11.59ms, P99 25.22ms, P99.999 53.84ms) | RSS 30100KiB | Csw 0
-- **Spring Boot**: 65816 req/s | Latency 6.10ms (P90 9.15ms, P99 16.90ms, P99.999 41.03ms) | RSS 1361864KiB | Csw 0
 
-**Spring runtime environment**
+| Profile | Req/s | Mean ms | P90 ms | P99 ms | P99.999 ms | RSS KiB | Csw |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| CWIST classic pool | 151,873 | 1.56 | 3.47 | 6.79 | 41.41 | 17,212 | 0 |
+| CWIST C1M reactor | 182,979 | 2.67 | 7.29 | 14.49 | 25.53 | 11,452 | 0 |
+| CWIST C1M reactor (arena_max=1) | 182,791 | 2.75 | 7.62 | 14.75 | 24.02 | 11,872 | 0 |
+| CWIST C1M reactor (drain_chunk=8) | 178,920 | 2.85 | 7.81 | 15.20 | 28.55 | 11,424 | 0 |
+| Axum | 150,456 | 2.62 | 4.54 | 6.89 | 14.77 | 17,068 | 0 |
+| Gin (Go) | 114,630 | 4.74 | 11.59 | 25.22 | 53.84 | 30,100 | 0 |
+| Spring Boot | 65,816 | 6.10 | 9.15 | 16.90 | 41.03 | 1,361,864 | 0 |
 
-- **JDK:** `openjdk version "25.0.4.1" 2026-08-18 LTS`
-- **Spring Boot:** 3.2.3
-- **Stack:** Spring WebFlux + Reactor Netty on native epoll (G1GC, JDK 25 Leyden AOT, virtual threads disabled)
-- **Virtual threads:** disabled
-
-**JVM options**
-
-```text
--Xms1024m
--Xmx1024m
--XX:+UseG1GC
--XX:GCTimeRatio=99
--XX:G1HeapRegionSize=1m
--XX:+AlwaysPreTouch
--XX:CompileThreshold=1500
--XX:CICompilerCount=4
--Djava.security.egd=file:/dev/urandom
--Djava.net.preferIPv4Stack=true
--Dio.netty.allocator.type=pooled
--Dio.netty.leakDetection.level=disabled
--Dio.netty.buffer.checkBounds=false
--Dio.netty.buffer.checkAccessible=false
--Dreactor.netty.ioWorkerCount=4
--Xlog:gc*:file=/tmp/spring_gc.log:time,uptime,level,tags
--XX:+AOTClassLinking
--XX:AOTCache=/tmp/spring_bench/app.aot (JEP 483 + JEP 514 single-step AOT)
-```
-
-**Warmup/profile**
-
-wrk -t12 -c400 -d10s (after 10s warmup, warmup discarded)
+- `arena_max=1`: glibc malloc arena cap adopted in PR #35 (issue #25); this row re-confirms that decision on every run.
+- `drain_chunk=8`: cooperative queuing for `cwist_async_defer` completions (issue #25, docs/cooperative-queuing.md). This workload issues no async-defer traffic, so parity with the plain C1M row is expected; the mechanism itself is measured in tests/bench_cooperative_queuing.c.
+- Csw is the context-switch delta over the measured window, summed across every thread of the server process group.
+- Spring Boot row: openjdk version "25.0.4.1" 2026-08-18 LTS, Spring Boot 3.2.3, Spring WebFlux + Reactor Netty on native epoll (G1GC, JDK 25 Leyden AOT, virtual threads disabled). Full JVM options are recorded in benchmarks/webserver.json.
 
 ![Web Server Benchmark Trends](docs/webserver-benchmark-trends.svg)
 
