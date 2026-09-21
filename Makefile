@@ -181,7 +181,10 @@ ifdef WERROR
 endif
 
 lib/multipart-parser-c/multipart_parser.o: CFLAGS := $(filter-out -Werror,$(CFLAGS))
-lib/sqlite3/sqlite3.o: CFLAGS := $(filter-out -Werror,$(CFLAGS))
+# sqlite3 also skips LTO: lto1 re-optimizing the amalgamation at link time
+# trips a known -Wstringop-overread false positive (sqlite3Strlen30) that
+# -Werror then promotes to a build failure.
+lib/sqlite3/sqlite3.o: CFLAGS := $(filter-out -Werror -flto=auto -ffat-lto-objects,$(CFLAGS))
 
 # Source Files
 SRCS = src/core/sstring/sstring.c \
