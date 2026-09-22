@@ -8,6 +8,8 @@
   "files": [
     "index.js",
     "index.d.ts",
+    "component.js",
+    "component.d.ts",
     "README.md"
   ],
   "engines": {
