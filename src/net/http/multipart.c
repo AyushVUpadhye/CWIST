@@ -5,6 +5,7 @@
 
 #include <cwist/net/http/multipart.h>
 #include <cwist/core/mem/alloc.h>
+#include <stdbool.h>
 #include <string.h>
 #include <strings.h>
 #include <stdio.h>
@@ -16,6 +17,9 @@ typedef struct {
     size_t header_field_len;
     char header_value[1024];
     size_t header_value_len;
+    /* Set once a value was delivered for the current header, even an empty
+     * one; header_value_len alone cannot express "seen but empty". */
+    bool have_value;
 
     char name[256];
     char filename[256];
@@ -32,7 +36,7 @@ static void mp_parse_headers(mp_parse_ctx *ctx);
 
 static int mp_on_header_field(multipart_parser *p, const char *at, size_t len) {
     mp_parse_ctx *ctx = (mp_parse_ctx *)multipart_parser_get_data(p);
-    if (ctx->header_value_len > 0) {
+    if (ctx->have_value) {
         /* Previous header value is complete, parse it before moving to next field. */
         mp_parse_headers(ctx);
     }
@@ -45,6 +49,7 @@ static int mp_on_header_field(multipart_parser *p, const char *at, size_t len) {
 
 static int mp_on_header_value(multipart_parser *p, const char *at, size_t len) {
     mp_parse_ctx *ctx = (mp_parse_ctx *)multipart_parser_get_data(p);
+    ctx->have_value = true;
     if (ctx->header_value_len + len < sizeof(ctx->header_value)) {
         memcpy(ctx->header_value + ctx->header_value_len, at, len);
         ctx->header_value_len += len;
@@ -93,6 +98,7 @@ static void mp_parse_headers(mp_parse_ctx *ctx) {
 
     ctx->header_field_len = 0;
     ctx->header_value_len = 0;
+    ctx->have_value = false;
 }
 
 static int mp_on_headers_complete(multipart_parser *p) {
@@ -103,11 +109,12 @@ static int mp_on_headers_complete(multipart_parser *p) {
 
 static int mp_on_part_data_begin(multipart_parser *p) {
     mp_parse_ctx *ctx = (mp_parse_ctx *)multipart_parser_get_data(p);
-    if (ctx->header_value_len > 0) {
+    if (ctx->have_value) {
         mp_parse_headers(ctx);
     }
     ctx->header_field_len = 0;
     ctx->header_value_len = 0;
+    ctx->have_value = false;
     ctx->name[0] = '\0';
     ctx->filename[0] = '\0';
     ctx->content_type[0] = '\0';
@@ -209,8 +216,22 @@ cwist_multipart_result *cwist_multipart_parse(const char *body, size_t body_len,
         return NULL;
     }
     multipart_parser_set_data(parser, &ctx);
-    multipart_parser_execute(parser, body, body_len);
+    size_t consumed = multipart_parser_execute(parser, body, body_len);
     multipart_parser_free(parser);
+
+    /* Truncated body: on_part_data_end never fired, so release the in-flight
+     * part buffer here. */
+    if (ctx.data) {
+        cwist_free(ctx.data);
+        ctx.data = NULL;
+    }
+
+    /* The parser stops early on malformed input; report it as NULL per the
+     * documented contract. */
+    if (consumed != body_len) {
+        cwist_multipart_result_destroy(result);
+        return NULL;
+    }
 
     return result;
 }
