@@ -182,7 +182,7 @@ missing optional API does not prevent an HTTP/3 build.
   ./server
 
 <!-- BENCHMARKS:START -->
-Latest automated benchmark: **Darwin**: 11.5 M leases/s, 143.41% CPU, 724416 KiB RSS.
+Latest automated benchmark: **Darwin**: 13.21 M leases/s, 131.2% CPU, 709600 KiB RSS.
 
 ![CWIST benchmark trends](docs/benchmark-trends.svg)
 <!-- BENCHMARKS:END -->
@@ -192,13 +192,13 @@ Latest Web Server Benchmark (wrk -t12 -c400 -d10s (after 10s warmup, warmup disc
 
 | Profile | Req/s | Mean ms | P90 ms | P99 ms | P99.999 ms | RSS KiB | Csw |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| CWIST classic pool | 157,107 | 1.47 | 2.96 | 5.72 | 21.81 | 16,036 | 1,574,061 |
-| CWIST C1M reactor | 184,191 | 2.63 | 7.08 | 14.10 | 22.82 | 11,504 | 415,363 |
-| CWIST C1M reactor (arena_max=1) | 184,221 | 2.58 | 6.91 | 13.57 | 22.85 | 12,156 | 394,464 |
-| CWIST C1M reactor (drain_chunk=8) | 182,414 | 2.63 | 7.03 | 15.59 | 31.06 | 11,484 | 429,902 |
-| Axum | 149,831 | 2.64 | 4.64 | 6.99 | 15.79 | 15,456 | 269,652 |
-| Gin (Go) | 116,982 | 4.33 | 10.13 | 22.06 | 54.31 | 30,296 | 347,589 |
-| Spring Boot | 74,252 | 5.33 | 7.05 | 10.70 | 50.78 | 1,303,828 | 338,974 |
+| CWIST classic pool | 154,255 | 1.50 | 3.05 | 5.90 | 21.72 | 15,828 | 1,527,161 |
+| CWIST C1M reactor | 185,265 | 2.58 | 6.89 | 13.77 | 26.18 | 11,368 | 399,291 |
+| CWIST C1M reactor (arena_max=1) | 183,869 | 2.69 | 7.32 | 14.57 | 23.36 | 12,056 | 415,198 |
+| CWIST C1M reactor (drain_chunk=8) | 184,822 | 2.55 | 6.76 | 13.53 | 23.09 | 11,296 | 388,586 |
+| Axum | 149,028 | 2.65 | 4.57 | 6.86 | 12.97 | 18,720 | 300,163 |
+| Gin (Go) | 115,758 | 4.62 | 11.29 | 23.94 | 51.93 | 29,808 | 393,377 |
+| Spring Boot | 76,291 | 5.26 | 7.04 | 11.34 | 71.21 | 1,347,580 | 335,437 |
 
 - `arena_max=1`: glibc malloc arena cap adopted in PR #35 (issue #25); this row re-confirms that decision on every run.
 - `drain_chunk=8`: cooperative queuing for `cwist_async_defer` completions (issue #25, docs/cooperative-queuing.md). This workload issues no async-defer traffic, so parity with the plain C1M row is expected; the mechanism itself is measured in tests/bench_cooperative_queuing.c.
@@ -217,8 +217,8 @@ GitHub hands out a different CPU model per run, which moves these numbers more t
 
 | Runner CPU | Runs | CWIST classic ms | CWIST C1M ms | Axum ms | CWIST C1M req/s | Axum req/s |
 |---|---:|---:|---:|---:|---:|---:|
-| AMD EPYC 7763 64-Core Processor | 50 | 2.02 | 3.01 | 3.52 | 136,593 | 110,932 |
-| AMD EPYC 9V74 80-Core Processor | 24 | 1.78 | 2.60 | 2.99 | 152,322 | 132,345 |
+| AMD EPYC 7763 64-Core Processor | 49 | 2.02 | 3.01 | 3.52 | 136,628 | 110,890 |
+| AMD EPYC 9V74 80-Core Processor | 25 | 1.70 | 2.59 | 2.76 | 161,468 | 143,482 |
 | INTEL(R) XEON(R) PLATINUM 8573C | 9 | 1.09 | 1.86 | 1.85 | 236,565 | 216,218 |
 | Intel(R) Xeon(R) 6973P-C | 8 | 0.98 | 1.77 | 1.65 | 294,300 | 239,744 |
 | AMD EPYC 9V45 96-Core Processor | 6 | 1.27 | 2.32 | 2.03 | 218,214 | 195,576 |
