@@ -1,9 +1,11 @@
-# WASI targets (issue #93 Phase 3 follow-up)
+# WASI targets
 
-Date: 2026-09-21 (updated). Verdict: **both WASI flavours work.** Preview1
-(`wasm32-wasi`) runs the in-memory dispatch surface under wasmtime, and
-**WASI 0.2 (`wasm32-wasip2`) binds real sockets and serves HTTP** through
-`wasi:sockets`. Quirks are handled on the CWIST side (see below).
+WASI 0.2 (`wasm32-wasip2`) is the supported WASI flavour: it binds real
+sockets and serves HTTP through `wasi:sockets`, gated in CI by the
+`wasip2` job in `.github/workflows/wasm.yml` (`make wasip2-smoke` under
+wasi-sdk 25 + wasmtime 25). Preview1 (`wasm32-wasi`) covers only the
+in-memory dispatch surface and has no socket runtime. Quirks are handled
+on the CWIST side (see below).
 
 ## Flavour detection
 
@@ -25,6 +27,10 @@ Guards that exclude fork/signals/rlimits/threads stay on plain `__wasi__`;
 guards around the socket server runtime key off `CWIST_WASI_(NO_)SOCKETS`.
 
 ## WASI 0.2 socket server
+
+For a complete build, deployment, and restart walkthrough, see the
+[Wasmtime appliance guide](../deployment/wasmtime-appliance.md). It also
+explains the example's network and persistence limitations.
 
 `make wasip2-smoke` builds `libcwist_wasip2.a` — `WASM_SRCS` plus
 `src/sys/wasi/compat.c`, `metrics.c`, `writer_fast.c`, `async.c`,
@@ -66,6 +72,10 @@ CWIST-side quirk handling for wasip2:
   time are plain-C stubs in `src/sys/wasi/compat.c`; the metrics and
   writer-fast stubs in that file are preview1-only since the real units
   join the wasip2 build.
+- The request-serving call chain peaks near 96KB of stack — over wasm-ld's
+  64KB default, and the overflow silently corrupts linear memory rather
+  than trapping. Link wasip2 binaries with a larger stack
+  (`-Wl,-z,stack-size=…`, `WASIP2_STACK_BYTES` in the Makefile).
 
 ## WASI preview1 (retired)
 

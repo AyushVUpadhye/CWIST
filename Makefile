@@ -380,12 +380,6 @@ WASIP2_TARGET = wasm32-wasip2
 # symbols with the library dropped).
 WASIP2_LDLIBS = $(if $(findstring wasip2,$(WASIP2_TARGET)),-lwasi-emulated-pthread,) \
 	-lwasi-emulated-getpid
-# WASI 0.3 (wasip3) runs blocking socket calls on switched stacks, and the
-# socket-serving chain needs more than wasm-ld's default 64 KiB stack
-# (audited 2026-09-22: first request after accept traps with an OOB read at a
-# wild negative SP; 128 KiB suffices, 256 KiB is the headroom margin).
-# See docs/api/wasm-component.md "Resolved: socket request path under wasip3".
-WASIP2_TARGET_LDFLAGS = $(if $(findstring wasip3,$(WASIP2_TARGET)),-z stack-size=262144,)
 WASIP2_BUILD_DIR = .wasip2-build
 WASIP2_CFLAGS = -std=c17 -O2 -Wall -fvisibility=hidden \
 	-D_WASI_EMULATED_GETPID \
@@ -400,6 +394,12 @@ WASIP2_EXTRA_SRCS = src/sys/wasi/compat.c src/sys/metrics/metrics.c \
 WASIP2_SRCS = $(WASM_SRCS) $(WASIP2_EXTRA_SRCS)
 WASIP2_OBJS = $(WASIP2_SRCS:%.c=$(WASIP2_BUILD_DIR)/%.o)
 WASIP2_PORT ?= 18099
+# The socket request path (16KB read buffer + parse/route/serialize frames +
+# sqlite) peaks near 96KB of stack; wasm-ld's 64KB default overflows into
+# linear memory and silently corrupts adjacent objects (under wasip3 the first
+# request after accept traps with an OOB read at a wild negative SP; see
+# docs/api/wasm-component.md "Resolved: socket request path under wasip3").
+WASIP2_STACK_BYTES ?= 1048576
 
 $(WASIP2_BUILD_DIR)/%.o: %.c
 	@mkdir -p $(dir $@)
@@ -411,8 +411,8 @@ libcwist_wasip2.a: $(WASIP2_OBJS)
 wasip2-smoke: libcwist_wasip2.a
 	$(WASI_SDK)/bin/clang --target=$(WASIP2_TARGET) $(WASIP2_CFLAGS) \
 	    -DWASIP2_SMOKE_PORT=$(WASIP2_PORT) -o wasip2_smoke.wasm tests/wasip2_smoke.c \
-	    libcwist_wasip2.a $(WASIP2_LDLIBS) $(WASIP2_TARGET_LDFLAGS) \
-	    -Wl,--gc-sections -Wl,--allow-undefined
+	    libcwist_wasip2.a $(WASIP2_LDLIBS) \
+	    -Wl,--gc-sections -Wl,--allow-undefined -Wl,-z,stack-size=$(WASIP2_STACK_BYTES)
 	@set -e; \
 	LOG=/tmp/cwist_wasip2_smoke.$$$$.log; \
 	if [ "$(findstring wasip3,$(WASIP2_TARGET))" = "" ]; then PREVIEW2="-S preview2=y"; else PREVIEW2=""; fi; \
@@ -426,6 +426,10 @@ wasip2-smoke: libcwist_wasip2.a
 	    body=$$(curl -s -m 2 http://127.0.0.1:$(WASIP2_PORT)/hello || true); \
 	    if [ "$$body" = "hello from WASI 0.2" ]; then ok=1; break; fi; \
 	done; \
+	if [ $$ok -eq 1 ]; then \
+	    body=$$(curl -s -m 2 http://127.0.0.1:$(WASIP2_PORT)/hello || true); \
+	    [ "$$body" = "hello from WASI 0.2" ] || ok=0; \
+	fi; \
 	cat $$LOG; rm -f $$LOG; \
 	if [ $$ok -ne 1 ]; then echo "wasip2-smoke: curl probe failed"; exit 1; fi; \
 	kill -9 $$WPID 2>/dev/null || true; \
@@ -493,8 +497,8 @@ $(COMPONENT_BUILD_DIR)/guest.component.wasm: $(COMPONENT_BUILD_DIR)/guest.o \
 	    -o $(COMPONENT_BUILD_DIR)/guest.core.wasm \
 	    $(COMPONENT_BUILD_DIR)/guest.o $(COMPONENT_BUILD_DIR)/cwist_guest.o \
 	    $(WIT_BINDINGS_DIR)/cwist_guest_component_type.o \
-	    libcwist_wasip2.a $(WASIP2_LDLIBS) $(WASIP2_TARGET_LDFLAGS) \
-	    -Wl,--gc-sections -Wl,--allow-undefined
+	    libcwist_wasip2.a $(WASIP2_LDLIBS) \
+	    -Wl,--gc-sections -Wl,--allow-undefined -Wl,-z,stack-size=$(WASIP2_STACK_BYTES)
 	wasm-tools component embed wit/ $(COMPONENT_BUILD_DIR)/guest.core.wasm \
 	    -o $@
 
@@ -744,7 +748,8 @@ TEST_TARGETS = test_worker_affinity \
                test_malloc_intercept \
                test_proto_gen \
                test_proto_desc \
-               test_css_composer
+               test_css_composer \
+               test_multipart
 
 .PHONY: all test $(TEST_TARGETS) fuzz_seq install uninstall dist clean rebuild examples clean-examples wasm wasm-smoke clean-wasm wasip2-smoke clean-wasip2 wit-check jco-transpile wit-bindings component-guest component-smoke clean-component
 
@@ -1203,6 +1208,10 @@ test_csrf: $(LIB_NAME) tests/test_csrf.c
 test_cookie: $(LIB_NAME) tests/test_cookie.c
 	$(CC) $(CFLAGS) -o test_cookie tests/test_cookie.c $(LIB_NAME) $(LIBS)
 	./test_cookie
+
+test_multipart: $(LIB_NAME) tests/test_multipart.c
+	$(CC) $(CFLAGS) -o test_multipart tests/test_multipart.c $(LIB_NAME) $(LIBS)
+	./test_multipart
 
 test_waf: $(LIB_NAME) tests/test_waf.c
 	$(CC) $(CFLAGS) -o test_waf tests/test_waf.c $(LIB_NAME) $(LIBS)
