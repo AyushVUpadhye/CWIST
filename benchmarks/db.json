@@ -1,27 +1,5 @@
 [
   {
-    "timestamp": "2026-09-14T02:58:55.304863+00:00",
-    "os": "Linux",
-    "arch": "x86_64",
-    "cpu_percent": 164.09,
-    "rss_kib": 580492,
-    "context_switches": 6886,
-    "memory_recovery_kib": 0,
-    "waf_mchecks_s": 7.52,
-    "throughput_mleases_s": 9.08
-  },
-  {
-    "timestamp": "2026-09-14T02:57:54.296741+00:00",
-    "os": "Darwin",
-    "arch": "arm64",
-    "cpu_percent": 135.4,
-    "rss_kib": 662336,
-    "context_switches": 9055,
-    "memory_recovery_kib": 0,
-    "waf_mchecks_s": 9.79,
-    "throughput_mleases_s": 15.01
-  },
-  {
     "timestamp": "2026-09-14T05:31:50.885361+00:00",
     "os": "Linux",
     "arch": "x86_64",
@@ -1098,5 +1076,27 @@
     "memory_recovery_kib": 0,
     "waf_mchecks_s": 10.57,
     "throughput_mleases_s": 11.5
+  },
+  {
+    "timestamp": "2026-09-23T12:51:38.452184+00:00",
+    "os": "Linux",
+    "arch": "x86_64",
+    "cpu_percent": 174.14,
+    "rss_kib": 582208,
+    "context_switches": 8968,
+    "memory_recovery_kib": 0,
+    "waf_mchecks_s": 7.57,
+    "throughput_mleases_s": 8.9
+  },
+  {
+    "timestamp": "2026-09-23T12:48:58.889617+00:00",
+    "os": "Darwin",
+    "arch": "arm64",
+    "cpu_percent": 140.76,
+    "rss_kib": 732288,
+    "context_switches": 9255,
+    "memory_recovery_kib": 0,
+    "waf_mchecks_s": 10.35,
+    "throughput_mleases_s": 15.01
   }
 ]
