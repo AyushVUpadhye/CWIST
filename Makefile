@@ -194,6 +194,7 @@ SRCS = src/core/sstring/sstring.c \
        src/net/http/http.c \
        src/net/http/sse.c \
        src/net/graphql/graphql.c \
+       src/net/graphql/graphql_ws.c \
        src/net/http/http2.c \
        src/net/http/http2_flow_control.c \
        src/net/http/http3.c \
@@ -268,6 +269,7 @@ SRCS = src/core/sstring/sstring.c \
        src/core/validation/bind.c \
        src/sys/io/reactor.c \
        src/sys/job/scheduler.c \
+       src/sys/job/durable_queue.c \
        src/sys/metrics/metrics.c \
        src/sys/health/healthz.c \
        $(IO_SRC)
@@ -786,6 +788,7 @@ TEST_TARGETS = test_worker_affinity \
                test_middleware_jwt \
                test_sse \
                test_graphql \
+               test_graphql_subscriptions \
                test_core_hardening \
                test_https_full_gc \
                test_cwist \
@@ -847,6 +850,7 @@ TEST_TARGETS = test_worker_affinity \
                test_grpc_client \
                test_grpc_channel \
                test_dispatch_memory \
+               test_durable_queue \
                test_gc_ebr_release \
                test_full_gc_toggle_hardening \
                test_conn_registry \
@@ -1354,6 +1358,10 @@ test_graphql: $(LIB_NAME) tests/test_graphql.c
 	$(CC) $(CFLAGS) -o test_graphql tests/test_graphql.c $(LIB_NAME) $(LIBS)
 	./test_graphql
 
+test_graphql_subscriptions: $(LIB_NAME) tests/test_graphql_subscriptions.c
+	$(CC) $(CFLAGS) -o test_graphql_subscriptions tests/test_graphql_subscriptions.c $(LIB_NAME) $(LIBS)
+	./test_graphql_subscriptions
+
 test_core_hardening: $(LIB_NAME) tests/test_core_hardening.c
 	$(CC) $(CFLAGS) -o test_core_hardening tests/test_core_hardening.c $(LIB_NAME) $(LIBS)
 	./test_core_hardening
@@ -1365,6 +1373,10 @@ cli:
 test_scheduler: $(LIB_NAME) tests/test_scheduler.c
 	$(CC) $(CFLAGS) -o test_scheduler tests/test_scheduler.c $(LIB_NAME) $(LIBS)
 	./test_scheduler
+
+test_durable_queue: $(LIB_NAME) tests/test_durable_queue.c
+	$(CC) $(CFLAGS) -o test_durable_queue tests/test_durable_queue.c $(LIB_NAME) $(LIBS)
+	./test_durable_queue
 
 test_http_pipeline: $(LIB_NAME) tests/test_http_pipeline.c
 	$(CC) $(CFLAGS) -o $@ tests/test_http_pipeline.c $(LIB_NAME) $(LIBS)
