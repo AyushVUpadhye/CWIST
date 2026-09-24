@@ -86,39 +86,44 @@ int main() {
 TypeScript 진영의 `zod`에서 영감을 받은 강력한 런타임 스키마 검증기입니다. 클라이언트가 보낸 JSON을 안전하게 파싱하고 타입을 검증합니다.
 
 ```c
+#include <cwist/app.h>
 #include <cwist/core/utils/zod.h>
-#include <cwist/core/utils/json_builder.h>
+#include <cjson/cJSON.h>
+
+// 1. 스키마 정의 (name은 필수 문자열, age는 필수 정수)
+static const cwist_schema_field_t user_fields[] = {
+    {"name", {NULL}, CWIST_FIELD_STRING, true},
+    {"age", {NULL}, CWIST_FIELD_INT, true},
+};
+static const cwist_schema_t user_schema = {user_fields, 2};
 
 void create_user_handler(cwist_http_request *req, cwist_http_response *res) {
-    // 1. 스키마 정의 (name은 필수 문자열, age는 필수 숫자)
-    cwist_schema *schema = cwist_schema_create(CWIST_TYPE_OBJECT);
-    cwist_schema_add_prop(schema, "name", cwist_schema_create(CWIST_TYPE_STRING));
-    cwist_schema_add_prop(schema, "age", cwist_schema_create(CWIST_TYPE_NUMBER));
-
     // 2. 검증 (Body -> JSON)
     cJSON *parsed_json = NULL;
-    cwist_zod_result z_res = cwist_zod_parse(req->body->data, schema, &parsed_json);
+    const char *raw = (req->body && req->body->data) ? req->body->data : "";
+    cwist_zod_result_t z_res = cwist_zod_parse(raw, &user_schema, &parsed_json);
 
-    if (!z_res.success) {
+    if (!z_res.valid || !parsed_json) {
         res->status_code = CWIST_HTTP_BAD_REQUEST;
-        cwist_sstring_assign(res->body, z_res.error.message);
-    } else {
-        res->status_code = CWIST_HTTP_CREATED;
-        
-        // 3. JSON 응답 생성 (cJSON Builder 패턴)
-        cJSON *reply = cJSON_CreateObject();
-        cJSON_AddStringToObject(reply, "status", "User created");
-        cJSON_AddStringToObject(reply, "name", cJSON_GetObjectItem(parsed_json, "name")->valuestring);
-        
-        char *json_str = cJSON_PrintUnformatted(reply);
-        cwist_sstring_assign(res->body, json_str);
-        
-        free(json_str);
-        cJSON_Delete(reply);
-        cJSON_Delete(parsed_json);
+        cwist_sstring_assign(res->body,
+                             z_res.error_count > 0 ? z_res.errors[0].message : "invalid JSON");
+        return;
     }
-    
-    cwist_schema_destroy(schema);
+
+    res->status_code = CWIST_HTTP_CREATED;
+
+    // 3. JSON 응답 생성 (cJSON Builder 패턴)
+    cJSON *reply = cJSON_CreateObject();
+    cJSON_AddStringToObject(reply, "status", "User created");
+    cJSON_AddStringToObject(reply, "name", cJSON_GetObjectItem(parsed_json, "name")->valuestring);
+
+    char *json_str = cJSON_PrintUnformatted(reply);
+    cwist_http_header_add(&res->headers, "Content-Type", "application/json");
+    cwist_sstring_assign(res->body, json_str);
+
+    cJSON_free(json_str);
+    cJSON_Delete(reply);
+    cJSON_Delete(parsed_json);
 }
 ```
 
@@ -129,30 +134,27 @@ void create_user_handler(cwist_http_request *req, cwist_http_response *res) {
 모든 요청을 거쳐가는 파이프라인(Spring의 Interceptor, Express의 Middleware)을 쉽게 구축할 수 있습니다.
 
 ```c
-#include <cwist/sys/app/middleware.h>
+#include <cwist/app.h>
 
-// CORS 처리를 위한 미들웨어
-cwist_error_t cors_middleware(cwist_http_request *req, cwist_http_response *res) {
+// CORS 처리를 위한 미들웨어: next를 호출하면 다음 단계(다음 미들웨어 또는 핸들러)로 진행
+void cors_middleware(cwist_http_request *req, cwist_http_response *res, cwist_handler_func next) {
     cwist_http_header_add(&res->headers, "Access-Control-Allow-Origin", "*");
     cwist_http_header_add(&res->headers, "Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-    
-    // OPTIONS 요청 시 바로 응답 (체인 중단)
+
+    // OPTIONS 요청 시 바로 응답 (next를 호출하지 않으면 체인 중단)
     if (req->method == CWIST_HTTP_OPTIONS) {
         res->status_code = CWIST_HTTP_NO_CONTENT;
-        return make_error(CWIST_ERR_INT16); // 중단
+        return;
     }
-    
-    // 에러 타입을 0으로 반환하면 다음 핸들러로 진행
-    cwist_error_t proceed = make_error(CWIST_ERR_INT16);
-    proceed.error.err_i16 = 0;
-    return proceed; 
+
+    if (next) next(req, res);
 }
 
 int main() {
     cwist_app *app = cwist_app_create();
-    
+
     // 미들웨어 등록 (전역 적용)
-    cwist_app_use_middleware(app, cors_middleware);
+    cwist_app_use(app, cors_middleware);
     // ...
 }
 ```
@@ -164,16 +166,21 @@ int main() {
 CWIST는 내장형 SQLite를 완벽히 지원하며, 앱 라이프사이클에 연결된 커넥션 풀 및 마이그레이션 도구를 제공합니다.
 
 ```c
+#include <cwist/app.h>
 #include <cwist/core/db/sql.h>
 #include <cwist/core/db/migrate.h>
 
 void get_users_handler(cwist_http_request *req, cwist_http_response *res) {
-    // req->db는 앱 구동 시 자동 연결된 DB 인스턴스
+    // req->db는 cwist_app_use_db()로 앱에 연결한 DB 인스턴스
     cwist_db *db = req->db;
-    
-    sqlite3_stmt *stmt;
-    sqlite3_prepare_v2(db->conn, "SELECT id, name FROM users", -1, &stmt, NULL);
-    
+
+    sqlite3_stmt *stmt = NULL;
+    if (!db || sqlite3_prepare_v2(db->conn, "SELECT id, name FROM users", -1, &stmt, NULL) !=
+                   SQLITE_OK) {
+        res->status_code = CWIST_HTTP_INTERNAL_ERROR;
+        return;
+    }
+
     cJSON *users_array = cJSON_CreateArray();
     while (sqlite3_step(stmt) == SQLITE_ROW) {
         cJSON *user = cJSON_CreateObject();
@@ -182,27 +189,47 @@ void get_users_handler(cwist_http_request *req, cwist_http_response *res) {
         cJSON_AddItemToArray(users_array, user);
     }
     sqlite3_finalize(stmt);
-    
+
     char *json_str = cJSON_PrintUnformatted(users_array);
+    cwist_http_header_add(&res->headers, "Content-Type", "application/json");
     cwist_sstring_assign(res->body, json_str);
-    free(json_str);
+    cJSON_free(json_str);
     cJSON_Delete(users_array);
 }
 
+// 스키마 마이그레이션 (version 순서대로 한 번씩만 적용)
+static const cwist_migration_t migrations[] = {
+    {.version = 1,
+     .name = "create_users",
+     .up_sql = "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT);",
+     .down_sql = "DROP TABLE users;"},
+    {.version = 2,
+     .name = "insert_seed",
+     .up_sql = "INSERT INTO users (name) VALUES ('Alice'), ('Bob');",
+     .down_sql = "DELETE FROM users;"},
+};
+
 int main() {
     cwist_app *app = cwist_app_create();
-    
-    // DB 연결 ("file.db" 또는 ":memory:")
-    cwist_app_connect_db(app, "app_data.db");
-    
-    // 스키마 마이그레이션 자동 적용
-    cwist_migration_t migrations[] = {
-        {"001_create_users", "CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT);"},
-        {"002_insert_seed", "INSERT INTO users (name) VALUES ('Alice'), ('Bob');"}
-    };
-    cwist_migrate_up(app->db, migrations, 2);
 
-    // ... 라우팅 설정
+    // DB 연결 ("file.db" 또는 ":memory:")
+    cwist_error_t err = cwist_app_use_db(app, "app_data.db");
+    if (!cwist_error_is_ok(&err)) {
+        cwist_error_dispose(&err);
+        cwist_app_destroy(app);
+        return 1;
+    }
+
+    // 스키마 마이그레이션 자동 적용
+    if (cwist_migrate_up(cwist_app_get_db(app)->conn, migrations, 2) != CWIST_MIGRATE_OK) {
+        cwist_app_destroy(app);
+        return 1;
+    }
+
+    cwist_app_get(app, "/users", get_users_handler);
+    cwist_app_listen(app, 8080);
+    cwist_app_destroy(app);
+    return 0;
 }
 ```
 
@@ -295,41 +322,39 @@ int main() {
 
 ## 8. 웹소켓 연동 (실시간 양방향 통신)
 
-CWIST는 동일한 포트와 라우터 안에서 HTTP 통신을 WebSocket으로 쉽게 업그레이드 할 수 있습니다.
+CWIST는 동일한 포트에서 HTTP 통신을 WebSocket으로 쉽게 업그레이드 할 수 있습니다. `cwist_app_ws()`로 경로를 등록하면 업그레이드 핸드셰이크는 프레임워크가 처리하고, 핸들러는 연결된 `cwist_websocket`만 다룹니다.
 
 ```c
+#include <cwist/app.h>
 #include <cwist/net/websocket/websocket.h>
+#include <stdio.h>
 
-// 메시지를 받을 때마다 호출되는 콜백
-void on_ws_message(cwist_websocket *ws, const char *msg, size_t len, int opcode) {
-    if (opcode == 1) { // Text Message
-        printf("Received: %s\n", msg);
-        // 에코 응답 (클라이언트로 다시 전송)
-        cwist_ws_send_text(ws, msg);
+// 연결 하나당 한 번 호출됩니다. 업그레이드(101 응답)는 프레임워크가 처리하며,
+// 이 함수가 반환하면 연결이 정리됩니다.
+void chat_handler(cwist_websocket *ws) {
+    cwist_ws_frame *frame;
+    // 연결이 닫히거나 오류가 나면 NULL (PING에 대한 PONG 응답은 자동)
+    while ((frame = cwist_websocket_receive(ws)) != NULL) {
+        if (frame->opcode == CWIST_WS_FRAME_CLOSE) {
+            cwist_websocket_frame_destroy(frame);
+            break;
+        }
+        if (frame->opcode == CWIST_WS_FRAME_TEXT) {
+            printf("Received: %.*s\n", (int)frame->payload_len, (const char *)frame->payload);
+            // 에코 응답 (클라이언트로 다시 전송)
+            cwist_websocket_send(ws, CWIST_WS_FRAME_TEXT, frame->payload, frame->payload_len);
+        }
+        cwist_websocket_frame_destroy(frame);
     }
-}
-
-// 클라이언트 연결 해제 콜백
-void on_ws_close(cwist_websocket *ws) {
     printf("Client disconnected.\n");
 }
 
-// 웹소켓 엔드포인트 핸들러
-void ws_handler(cwist_http_request *req, cwist_http_response *res) {
-    // 1. 요청이 유효한 WS 업그레이드 요청인지 확인
-    if (cwist_ws_is_upgrade_request(req)) {
-        // 2. 업그레이드 수행. 이후 핸들러가 소켓 제어권을 넘겨받음
-        cwist_ws_upgrade(req, res, on_ws_message, on_ws_close);
-    } else {
-        res->status_code = CWIST_HTTP_BAD_REQUEST;
-        cwist_sstring_assign(res->body, "Expected WebSocket Upgrade");
-    }
-}
-
 int main() {
-    cwist_mux *router = cwist_mux_create();
-    cwist_mux_add_route(router, CWIST_HTTP_GET, "/chat", ws_handler);
-    // ...
+    cwist_app *app = cwist_app_create();
+    cwist_app_ws(app, "/chat", chat_handler);
+    cwist_app_listen(app, 8080);
+    cwist_app_destroy(app);
+    return 0;
 }
 ```
 
@@ -479,4 +504,4 @@ function DynamicThemeApp() {
 ---
 
 ### 마치며
-이 튜토리얼을 통해 C 기반 환경임에도 불구하고 얼마나 친숙하고 선언적으로 웹 개발을 할 수 있는지 확인하셨길 바랍니다. `cwist_app` 구조체가 전체 생명주기를, `cwist_mux`가 라우팅을 담당한다는 점만 기억하면 기존 모던 프레임워크와 동일한 아키텍처로 개발을 진행할 수 있습니다.
+이 튜토리얼을 통해 C 기반 환경임에도 불구하고 얼마나 친숙하고 선언적으로 웹 개발을 할 수 있는지 확인하셨길 바랍니다. `cwist_app` 구조체가 전체 생명주기를, `cwist_app_get()` 같은 등록 함수가 라우팅을 담당한다는 점만 기억하면 기존 모던 프레임워크와 동일한 아키텍처로 개발을 진행할 수 있습니다.
