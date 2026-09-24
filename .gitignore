@@ -3,6 +3,7 @@
 *.a
 *.so
 tutorials/*/build/
+build-tutorials/
 
 # Test binaries
 test_sstring
