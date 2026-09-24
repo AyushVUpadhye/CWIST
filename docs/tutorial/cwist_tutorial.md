@@ -56,6 +56,9 @@ int main() {
 동적 경로(Path Parameter)와 쿼리 문자열(Query Parameter)을 처리하는 방법입니다. React Router나 Express와 매우 유사한 직관적인 패턴을 제공합니다.
 
 ```c
+#include <cwist/app.h>
+#include <stdio.h>
+
 // 예: /users/:id?role=admin
 void user_profile_handler(cwist_http_request *req, cwist_http_response *res) {
     // Path 파라미터 읽기 (:id)
@@ -240,7 +243,10 @@ int main() {
 현대 웹의 필수인 Stateless JWT 인증을 내장 함수로 지원합니다.
 
 ```c
+#include <cwist/app.h>
+#include <cwist/core/mem/alloc.h>
 #include <cwist/security/jwt/jwt.h>
+#include <string.h>
 
 #define SECRET_KEY "my_super_secret"
 
@@ -249,35 +255,39 @@ void login_handler(cwist_http_request *req, cwist_http_response *res) {
     cJSON *payload = cJSON_CreateObject();
     cJSON_AddStringToObject(payload, "user_id", "12345");
     cJSON_AddStringToObject(payload, "role", "admin");
-    
-    // 3600초(1시간) 유효기간의 토큰 생성
-    cwist_sstring *token = cwist_jwt_sign(payload, SECRET_KEY, 3600);
-    
-    cwist_sstring_assign(res->body, token->data);
-    cwist_sstring_destroy(token);
+    char *payload_json = cJSON_PrintUnformatted(payload);
     cJSON_Delete(payload);
+
+    // 3600초(1시간) 유효기간의 토큰 생성 (exp 클레임 자동 추가)
+    char *token = cwist_jwt_sign(payload_json, SECRET_KEY, 3600);
+    cJSON_free(payload_json);
+
+    if (!token) {
+        res->status_code = CWIST_HTTP_INTERNAL_ERROR;
+        return;
+    }
+    cwist_sstring_assign(res->body, token);
+    cwist_free(token);
 }
 
 // API 요청 시 JWT 검증 미들웨어
-cwist_error_t auth_middleware(cwist_http_request *req, cwist_http_response *res) {
+void auth_middleware(cwist_http_request *req, cwist_http_response *res, cwist_handler_func next) {
     const char *auth_header = cwist_http_header_get(req->headers, "Authorization");
-    
+
     if (auth_header && strncmp(auth_header, "Bearer ", 7) == 0) {
-        const char *token_str = auth_header + 7;
-        cwist_error_t verify = cwist_jwt_verify(token_str, SECRET_KEY);
-        
-        if (verify.errtype == CWIST_ERR_INT16 && verify.error.err_i16 == 0) {
-            // 토큰 유효함, 통과!
-            return verify;
+        // 서명과 exp 검증에 성공하면 클레임 객체, 실패하면 NULL
+        cwist_jwt_claims *claims = cwist_jwt_verify(auth_header + 7, SECRET_KEY);
+        if (claims) {
+            // 토큰 유효함, 통과! (예: cwist_jwt_claims_get(claims, "role"))
+            cwist_jwt_claims_destroy(claims);
+            if (next) next(req, res);
+            return;
         }
     }
-    
-    // 실패 시 401 응답 및 중단
+
+    // 실패 시 401 응답 (next를 호출하지 않으면 체인 중단)
     res->status_code = CWIST_HTTP_UNAUTHORIZED;
     cwist_sstring_assign(res->body, "{\"error\": \"Unauthorized\"}");
-    cwist_error_t err = make_error(CWIST_ERR_INT16);
-    err.error.err_i16 = -1;
-    return err;
 }
 ```
 
@@ -419,6 +429,7 @@ CWIST는 단순 백엔드 역할을 넘어, C 언어의 강력한 수학적 연�
 서버에서 동적으로 테마 CSS를 생성하여 렌더링 시점에 주입하는 방식입니다. 사용자별 커스텀 테마를 제공할 때 매우 유용합니다.
 
 ```c
+#include <cwist/app.h>
 #include <cwist/core/html/css_composer.h>
 
 void theme_css_handler(cwist_http_request *req, cwist_http_response *res) {
