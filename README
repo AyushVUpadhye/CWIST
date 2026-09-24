@@ -16,15 +16,18 @@ programming without sacrificing control.
 Powered by BoringSSL, lsquic, OpenSSL without context contamination.
 
 Two server modes, tuned for opposite things; pick per workload.
+CWIST reactor is the default (no env var needed); CWIST_C1M_MODE=0 selects
+CWIST Classic pool.
 
-  CWIST reactor   takes the throughput. Many connections per event loop,
-                  so a connection costs a reactor slot, not a parked
-                  thread. On the run below: 142,258 req/s against Axum's
-                  114,649, 24% more.
+  CWIST reactor (default)  takes the throughput. Many connections per event
+                           loop, so a connection costs a reactor slot, not a
+                           parked thread. On the run below: 142,258 req/s
+                           against Axum's 114,649, 24% more.
 
-  CWIST Classic pool  takes the latency. A thread per connection, so no
-                      request waits behind another in a batch. Median 1.55ms
-                      against Axum's 3.21ms, and ahead through p99.
+  CWIST Classic pool       takes the latency. A thread per connection, so no
+                           request waits behind another in a batch. Median
+                           1.55ms against Axum's 3.21ms, and ahead through
+                           p99.
 
 The distribution, not the average, is the point:
 
