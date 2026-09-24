@@ -23,6 +23,27 @@ framework-specific tuning is applied beyond what is documented here.
 - **Context switches** (`nvcsw + nivcsw` from `ps`) are counted only over the measured
   window — the counter baseline is taken *after* warmup.
 
+### Interpreting the context-switch column
+
+CWIST classic (`CWIST_C1M_MODE=0`) is the only blocking thread-per-connection server in
+the matrix; every other row multiplexes connections onto a small thread pool. That
+difference shows up almost entirely in this column, and it is a property of the
+concurrency model, not of wasted work:
+
+- Classic pays one voluntary switch per request — a worker blocked in `recv` wakes when
+  its connection's request arrives. That is the floor for the blocking model; nothing in
+  the serve path adds a second one (response sends use `MSG_DONTWAIT` with an inline
+  poll fallback that fires only when the client is genuinely slow).
+- CWIST C1M and the async runtimes batch many requests per wake, landing around
+  0.1–0.2 switches per request.
+
+Attribution on a CPU-throttled reproduction (cgroup `CPUQuota=400%`, matching the 4-vCPU
+runner: 136K RPS, 1.35M switches over 10s, matching CI's classic row): ~93% voluntary
+(recv wakeups, inherent), ~6% non-voluntary (quota preemption), pool scaling confirmed
+to ~1 worker per connection with zero spawn failures. Low-context-switch operation is
+what C1M — the default profile — is for; classic trades that for its sub-millisecond
+median at low concurrency (the tuned `wrk -t4 -c100` run).
+
 ### Tuned low-latency run
 
 CWIST and Spring Boot are each measured a second time under `wrk -t4 -c100 -d10s`
