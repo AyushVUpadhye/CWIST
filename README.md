@@ -55,8 +55,8 @@ changes do. They are not universal guarantees.
 <!-- TUNED_BENCHMARK:START -->
 **Tuned low-latency run (wrk -t4 -c100 -d10s (after 10s warmup, warmup discarded)), CWIST vs Axum on identical concurrency:**
 
-- **CWIST**: 200,542 req/s at 0.33ms average latency (P50 0.23ms, P90 0.61ms, P99 2.05ms)
-- **Axum**: 213,773 req/s at 0.45ms average latency (P50 0.40ms, P90 0.76ms, P99 1.63ms), same binary as the main run above
+- **CWIST**: 198,137 req/s at 0.31ms average latency (P50 0.26ms, P90 0.51ms, P99 1.69ms)
+- **Axum**: 184,923 req/s at 0.51ms average latency (P50 0.45ms, P90 0.90ms, P99 1.64ms), same binary as the main run above
 
 Leaving headroom between server workers and load-generator threads keeps the latency tail flat. Oversubscribing the same cores shows a multi-ms average from scheduling jitter alone at similar throughput.
 <!-- TUNED_BENCHMARK:END -->
@@ -161,13 +161,13 @@ Latest Web Server Benchmark (wrk -t12 -c400 -d10s (after 10s warmup, warmup disc
 
 | Profile | Req/s | Mean ms | P90 ms | P99 ms | P99.999 ms | RSS KiB | Csw |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| CWIST classic pool | 189,888 | 1.23 | 2.67 | 5.89 | 22.60 | 16,920 | 1,796,531 |
-| CWIST C1M reactor | 235,157 | 2.19 | 5.92 | 12.65 | 24.36 | 11,572 | 514,214 |
-| CWIST C1M reactor (arena_max=1) | 233,216 | 2.29 | 6.40 | 13.35 | 23.42 | 11,972 | 545,965 |
-| CWIST C1M reactor (drain_chunk=8) | 234,835 | 2.16 | 5.78 | 12.41 | 23.21 | 11,184 | 493,637 |
-| Axum | 205,570 | 1.93 | 3.49 | 5.41 | 11.31 | 17,264 | 376,424 |
-| Gin (Go) | 163,645 | 3.05 | 7.24 | 14.43 | 32.67 | 29,940 | 449,004 |
-| Spring Boot | 128,866 | 3.04 | 4.46 | 6.48 | 27.79 | 1,322,340 | 456,979 |
+| CWIST classic pool | 182,962 | 1.27 | 2.69 | 5.49 | 22.02 | 18,256 | 1,751,356 |
+| CWIST C1M reactor | 222,539 | 2.36 | 6.55 | 13.66 | 24.14 | 11,048 | 529,962 |
+| CWIST C1M reactor (arena_max=1) | 230,117 | 2.07 | 5.46 | 11.44 | 21.48 | 11,832 | 491,500 |
+| CWIST C1M reactor (drain_chunk=8) | 228,257 | 2.16 | 5.73 | 12.24 | 23.46 | 11,452 | 489,110 |
+| Axum | 185,622 | 2.14 | 3.77 | 5.84 | 15.91 | 16,460 | 336,541 |
+| Gin (Go) | 126,346 | 6.26 | 17.20 | 42.33 | 90.35 | 28,920 | 758,685 |
+| Spring Boot | 84,352 | 4.73 | 6.79 | 10.06 | 66.14 | 1,307,776 | 396,363 |
 
 - `arena_max=1`: glibc malloc arena cap adopted in PR #35 (issue #25); this row re-confirms that decision on every run.
 - `drain_chunk=8`: cooperative queuing for `cwist_async_defer` completions (issue #25, docs/cooperative-queuing.md). This workload issues no async-defer traffic, so parity with the plain C1M row is expected; the mechanism itself is measured in tests/bench_cooperative_queuing.c.
@@ -186,9 +186,9 @@ GitHub hands out a different CPU model per run, which moves these numbers more t
 
 | Runner CPU | Runs | CWIST classic ms | CWIST C1M ms | Axum ms | CWIST C1M req/s | Axum req/s |
 |---|---:|---:|---:|---:|---:|---:|
-| AMD EPYC 7763 64-Core Processor | 49 | 2.02 | 3.01 | 3.52 | 137,695 | 111,184 |
+| AMD EPYC 7763 64-Core Processor | 48 | 2.02 | 3.01 | 3.52 | 138,227 | 111,079 |
 | AMD EPYC 9V74 80-Core Processor | 25 | 1.70 | 2.59 | 2.76 | 161,468 | 143,482 |
-| INTEL(R) XEON(R) PLATINUM 8573C | 9 | 1.09 | 1.86 | 1.85 | 236,565 | 216,218 |
+| INTEL(R) XEON(R) PLATINUM 8573C | 10 | 1.09 | 1.87 | 1.85 | 236,525 | 215,638 |
 | AMD EPYC 9V45 96-Core Processor | 7 | 1.27 | 2.32 | 2.02 | 218,335 | 196,379 |
 | Intel(R) Xeon(R) 6973P-C | 7 | 1.00 | 1.79 | 1.66 | 296,517 | 238,006 |
 | Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz | 3 | 1.38 | 2.15 | 2.37 | 188,309 | 166,717 |
