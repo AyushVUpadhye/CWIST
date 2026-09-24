@@ -862,6 +862,7 @@ TEST_TARGETS = test_worker_affinity \
                test_full_gc_toggle_hardening \
                test_conn_registry \
                test_full_gc_sweep \
+               test_full_gc_tracking \
                test_io_queue_full_gc \
                test_full_gc_ownership_handoff \
                test_defer_free \
@@ -1457,6 +1458,10 @@ test_full_gc_sweep: $(LIB_NAME) tests/test_full_gc_sweep.c
 	$(CC) $(CFLAGS) -o test_full_gc_sweep tests/test_full_gc_sweep.c $(LIB_NAME) $(LIBS)
 	./test_full_gc_sweep
 
+test_full_gc_tracking: $(LIB_NAME) tests/test_full_gc_tracking.c
+	$(CC) $(CFLAGS) -o test_full_gc_tracking tests/test_full_gc_tracking.c $(LIB_NAME) $(LIBS)
+	./test_full_gc_tracking
+
 test_io_queue_full_gc: $(LIB_NAME) tests/test_io_queue_full_gc.c
 	$(CC) $(CFLAGS) -o test_io_queue_full_gc tests/test_io_queue_full_gc.c $(LIB_NAME) $(LIBS)
 	./test_io_queue_full_gc
@@ -1482,6 +1487,11 @@ bench_malloc_intercept: $(LIB_NAME) tests/bench_malloc_intercept.c
 
 bench_malloc_intercept_baseline: tests/bench_malloc_intercept.c
 	$(CC) $(CFLAGS) -DBASELINE -o bench_malloc_intercept_baseline tests/bench_malloc_intercept.c
+
+# Full-GC pending-set cost vs live-set size and thread count (issue #65).
+# Manual probe, not part of `make test`: ./bench_full_gc_tracking on|off [iterations]
+bench_full_gc_tracking: $(LIB_NAME) tests/bench_full_gc_tracking.c
+	$(CC) $(CFLAGS) -o bench_full_gc_tracking tests/bench_full_gc_tracking.c $(LIB_NAME) $(LIBS)
 
 test_proto_gen: $(LIB_NAME) tests/test_proto_gen.c tests/test_proto_gen_sample.proto
 	./tools/cli/cwist proto tests/test_proto_gen_sample.proto --output tests/test_proto_gen_sample.cwist.pb.h
