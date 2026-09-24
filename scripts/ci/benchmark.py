@@ -63,8 +63,8 @@ WEBSERVER_LATENCY_SVG = ROOT / "docs" / "webserver-latency-distribution.svg"
 # targeted A/B legs against the plain cwist_c1m row, not part of the
 # standing cross-framework comparison set).
 _LATENCY_KDE_SERVERS = [
-    ("CWIST (classic)", "cwist", "#22c55e"),
-    ("CWIST (C1M)", "cwist_c1m", "#10b981"),
+    ("CWIST Classic", "cwist", "#22c55e"),
+    ("CWIST", "cwist_c1m", "#10b981"),
     ("Axum", "axum", "#3b82f6"),
     ("Gin", "gin", "#06b6d4"),
     ("Spring Boot", "spring", "#ef4444"),
@@ -154,8 +154,8 @@ def render_latency_kde_svg(ws_latest: dict) -> str:
     so the shape of the tail - not just its P99.999 number - is visible at a
     glance. X-axis uses log1p(ms) so a long Gin/Spring tail doesn't compress
     the CWIST/Axum curves into an unreadable spike at the left edge."""
-    width, height = 900, 460
-    plot_x0, plot_x1 = 60, 860
+    width, height = 1000, 460
+    plot_x0, plot_x1 = 60, 940
     plot_y0, plot_y1 = 60, 380
 
     per_server = []
@@ -186,7 +186,7 @@ def render_latency_kde_svg(ws_latest: dict) -> str:
 
     legend_x = plot_x0
     for idx, (label, color, _samples) in enumerate(per_server):
-        lx = legend_x + idx * 150
+        lx = legend_x + idx * 170
         blocks.append(f'<rect x="{lx}" y="34" width="11" height="11" fill="{color}" rx="2"/>')
         blocks.append(f'<text x="{lx+16}" y="43" class="legend">{label}</text>')
 
@@ -227,28 +227,28 @@ README_MD = ROOT / "README.md"
 def render_webserver_svg(history: list[dict]) -> str:
     ws_latest = history[-1] if history else {}
     metrics = [
-        ("Throughput (req/s)", [("CWIST", "cwist_rps", "#22c55e"), ("CWIST C1M", "cwist_c1m_rps", "#10b981"), ("Axum", "axum_rps", "#3b82f6"), ("Gin", "gin_rps", "#06b6d4"), ("Spring", "spring_rps", "#ef4444")]),
-        ("Avg Latency (ms)", [("CWIST", "cwist_lat_ms", "#22c55e"), ("CWIST C1M", "cwist_c1m_lat_ms", "#10b981"), ("Axum", "axum_lat_ms", "#3b82f6"), ("Gin", "gin_lat_ms", "#06b6d4"), ("Spring", "spring_lat_ms", "#ef4444")]),
-        ("Peak RSS (KiB)", [("CWIST", "cwist_rss_kib", "#22c55e"), ("CWIST C1M", "cwist_c1m_rss_kib", "#10b981"), ("Axum", "axum_rss_kib", "#3b82f6"), ("Gin", "gin_rss_kib", "#06b6d4"), ("Spring", "spring_rss_kib", "#ef4444")]),
-        ("Context Switches", [("CWIST", "cwist_csw", "#22c55e"), ("CWIST C1M", "cwist_c1m_csw", "#10b981"), ("Axum", "axum_csw", "#3b82f6"), ("Gin", "gin_csw", "#06b6d4"), ("Spring", "spring_csw", "#ef4444")])
+        ("Throughput (req/s)", [("CWIST Classic", "cwist_rps", "#22c55e"), ("CWIST", "cwist_c1m_rps", "#10b981"), ("Axum", "axum_rps", "#3b82f6"), ("Gin", "gin_rps", "#06b6d4"), ("Spring", "spring_rps", "#ef4444")]),
+        ("Avg Latency (ms)", [("CWIST Classic", "cwist_lat_ms", "#22c55e"), ("CWIST", "cwist_c1m_lat_ms", "#10b981"), ("Axum", "axum_lat_ms", "#3b82f6"), ("Gin", "gin_lat_ms", "#06b6d4"), ("Spring", "spring_lat_ms", "#ef4444")]),
+        ("Peak RSS (KiB)", [("CWIST Classic", "cwist_rss_kib", "#22c55e"), ("CWIST", "cwist_c1m_rss_kib", "#10b981"), ("Axum", "axum_rss_kib", "#3b82f6"), ("Gin", "gin_rss_kib", "#06b6d4"), ("Spring", "spring_rss_kib", "#ef4444")]),
+        ("Context Switches", [("CWIST Classic", "cwist_csw", "#22c55e"), ("CWIST", "cwist_c1m_csw", "#10b981"), ("Axum", "axum_csw", "#3b82f6"), ("Gin", "gin_csw", "#06b6d4"), ("Spring", "spring_csw", "#ef4444")])
     ]
-    
-    width = 1120
+
+    width = 1280
     height = 540
     blocks = []
-    
+
     # Title & Legend
     blocks.append('<text x="30" y="35" class="title">Web Server Performance Comparison (wrk 12t 400c)</text>')
-    blocks.append('<rect x="530" y="20" width="12" height="12" fill="#22c55e" rx="2"/><text x="548" y="31" class="legend">CWIST</text>')
-    blocks.append('<rect x="615" y="20" width="12" height="12" fill="#10b981" rx="2"/><text x="633" y="31" class="legend">CWIST C1M</text>')
-    blocks.append('<rect x="730" y="20" width="12" height="12" fill="#3b82f6" rx="2"/><text x="748" y="31" class="legend">Axum</text>')
-    blocks.append('<rect x="805" y="20" width="12" height="12" fill="#06b6d4" rx="2"/><text x="823" y="31" class="legend">Gin</text>')
-    blocks.append('<rect x="870" y="20" width="12" height="12" fill="#ef4444" rx="2"/><text x="888" y="31" class="legend">Spring Boot</text>')
-    
+    blocks.append('<rect x="640" y="20" width="12" height="12" fill="#22c55e" rx="2"/><text x="658" y="31" class="legend">CWIST Classic</text>')
+    blocks.append('<rect x="790" y="20" width="12" height="12" fill="#10b981" rx="2"/><text x="808" y="31" class="legend">CWIST</text>')
+    blocks.append('<rect x="890" y="20" width="12" height="12" fill="#3b82f6" rx="2"/><text x="908" y="31" class="legend">Axum</text>')
+    blocks.append('<rect x="965" y="20" width="12" height="12" fill="#06b6d4" rx="2"/><text x="983" y="31" class="legend">Gin</text>')
+    blocks.append('<rect x="1030" y="20" width="12" height="12" fill="#ef4444" rx="2"/><text x="1048" y="31" class="legend">Spring Boot</text>')
+
     # Render 4 grid subpanels (2x2 layout)
-    panel_w = 520
+    panel_w = 600
     panel_h = 200
-    offsets = [(30, 60), (570, 60), (30, 290), (570, 290)]
+    offsets = [(30, 60), (670, 60), (30, 290), (670, 290)]
     
     for idx, (m_title, series_list) in enumerate(metrics):
         px, py = offsets[idx]
@@ -263,7 +263,7 @@ def render_webserver_svg(history: list[dict]) -> str:
         for s_idx, (label, key, color) in enumerate(series_list):
             val = float(ws_latest.get(key, 0))
             ratio = min(1.0, max(0.0, val / max_val))
-            bar_len = int(ratio * 280)
+            bar_len = int(ratio * 320)
             by = bar_y_base + s_idx * 27
             
             # Format value label
@@ -277,10 +277,10 @@ def render_webserver_svg(history: list[dict]) -> str:
                 val_str = f"{val:,.0f}"
                 
             blocks.append(f'<text x="{px+15}" y="{by+16}" class="bar-label">{label}</text>')
-            blocks.append(f'<rect x="{px+100}" y="{by}" width="280" height="22" fill="#374151" rx="3"/>')
+            blocks.append(f'<rect x="{px+120}" y="{by}" width="320" height="22" fill="#374151" rx="3"/>')
             if bar_len > 0:
-                blocks.append(f'<rect x="{px+100}" y="{by}" width="{bar_len}" height="22" fill="{color}" rx="3"/>')
-            blocks.append(f'<text x="{px+390}" y="{by+16}" class="bar-val">{val_str}</text>')
+                blocks.append(f'<rect x="{px+120}" y="{by}" width="{bar_len}" height="22" fill="{color}" rx="3"/>')
+            blocks.append(f'<text x="{px+450}" y="{by+16}" class="bar-val">{val_str}</text>')
 
     # Footer: recorded Spring/JVM & Go runtime environment & benchmark profile
     env = ws_latest.get("spring_env", {}) or {}
@@ -332,10 +332,10 @@ def render() -> None:
         return f"{value:,.{digits}f}" if isinstance(value, (int, float)) else "N/A"
 
     profiles = [
-        ("cwist", "CWIST classic pool"),
-        ("cwist_c1m", "CWIST C1M reactor"),
-        ("cwist_c1m_arena1", "CWIST C1M reactor (arena_max=1)"),
-        ("cwist_c1m_drainchunk", "CWIST C1M reactor (drain_chunk=8)"),
+        ("cwist", "CWIST Classic pool"),
+        ("cwist_c1m", "CWIST reactor"),
+        ("cwist_c1m_arena1", "CWIST reactor (arena_max=1)"),
+        ("cwist_c1m_drainchunk", "CWIST reactor (drain_chunk=8)"),
         ("axum", "Axum"),
         ("gin", "Gin (Go)"),
         ("spring", "Spring Boot"),
@@ -384,8 +384,8 @@ def render() -> None:
                  "numbers more than most code changes do. Medians of every recorded "
                  "run, split by the CPU it landed on, so rows are only comparable "
                  "down a column:", "",
-                 "| Runner CPU | Runs | CWIST classic ms | CWIST C1M ms | Axum ms | "
-                 "CWIST C1M req/s | Axum req/s |",
+                 "| Runner CPU | Runs | CWIST Classic ms | CWIST ms | Axum ms | "
+                 "CWIST req/s | Axum req/s |",
                  "|---|---:|---:|---:|---:|---:|---:|"]
         for runner, count, stats in ws_by_runner:
             def cell(key, digits=2):

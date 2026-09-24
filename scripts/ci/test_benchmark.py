@@ -65,7 +65,7 @@ class BenchmarkRenderTests(unittest.TestCase):
         self.assertEqual(self.block(readme), self.block(plain))
         self.assertTrue(readme.startswith("# Before\n\n" + START))
         self.assertTrue(readme.endswith(END + "\n\n# After\n"))
-        self.assertIn("| CWIST classic pool | 12,345 |", readme)
+        self.assertIn("| CWIST Classic pool | 12,345 |", readme)
         self.assertIn("| Spring Boot | 6,789 |", readme)
         return readme
 
@@ -144,7 +144,7 @@ class BenchmarkRenderTests(unittest.TestCase):
             check=True, capture_output=True, text=True,
         )
         svg = (self.root / "docs/webserver-latency-distribution.svg").read_text()
-        self.assertIn("CWIST (classic)", svg)
+        self.assertIn("CWIST Classic", svg)
         self.assertIn("<polyline", svg)
 
 

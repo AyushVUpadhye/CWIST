@@ -21,12 +21,12 @@ reactor. It is written in plain C and links statically.
 CWIST ships two request paths and they are tuned for opposite things. Pick per
 workload; the mode is one environment variable.
 
-**C1M reactor** takes the throughput. It multiplexes many connections per event
+**CWIST reactor** takes the throughput. It multiplexes many connections per event
 loop, so connection count is decoupled from thread count and a connection costs
 a reactor slot rather than a parked thread. On the run recorded further down it
 leads the async row on throughput.
 
-**Classic pool** takes the latency. Every connection gets its own thread, so no
+**CWIST Classic pool** takes the latency. Every connection gets its own thread, so no
 request waits behind another in a batch. It answers the median request in less
 than half of the Axum row's time, and stays ahead through p99.
 
@@ -153,10 +153,10 @@ Latest Web Server Benchmark (wrk -t12 -c400 -d10s (after 10s warmup, warmup disc
 
 | Profile | Req/s | Mean ms | P90 ms | P99 ms | P99.999 ms | RSS KiB | Csw |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| CWIST classic pool | 171,119 | 1.34 | 2.75 | 5.67 | 21.00 | 16,388 | 1,720,692 |
-| CWIST C1M reactor | 223,661 | 1.86 | 3.83 | 6.51 | 11.85 | 8,412 | 183,056 |
-| CWIST C1M reactor (arena_max=1) | 228,897 | 1.84 | 3.82 | 6.59 | 18.48 | 9,260 | 183,558 |
-| CWIST C1M reactor (drain_chunk=8) | 229,879 | 1.81 | 3.72 | 6.31 | 11.96 | 8,480 | 184,731 |
+| CWIST Classic pool | 171,119 | 1.34 | 2.75 | 5.67 | 21.00 | 16,388 | 1,720,692 |
+| CWIST reactor | 223,661 | 1.86 | 3.83 | 6.51 | 11.85 | 8,412 | 183,056 |
+| CWIST reactor (arena_max=1) | 228,897 | 1.84 | 3.82 | 6.59 | 18.48 | 9,260 | 183,558 |
+| CWIST reactor (drain_chunk=8) | 229,879 | 1.81 | 3.72 | 6.31 | 11.96 | 8,480 | 184,731 |
 | Axum | 195,977 | 2.03 | 3.69 | 5.77 | 12.39 | 17,408 | 324,786 |
 | Gin (Go) | 150,661 | 3.50 | 8.48 | 17.72 | 38.77 | 30,376 | 469,095 |
 | Spring Boot | 123,120 | 3.22 | 4.72 | 6.95 | 38.13 | 1,308,940 | 438,525 |
@@ -176,7 +176,7 @@ Latency distribution (density curve reconstructed from each server's percentiles
 
 GitHub hands out a different CPU model per run, which moves these numbers more than most code changes do. Medians of every recorded run, split by the CPU it landed on, so rows are only comparable down a column:
 
-| Runner CPU | Runs | CWIST classic ms | CWIST C1M ms | Axum ms | CWIST C1M req/s | Axum req/s |
+| Runner CPU | Runs | CWIST Classic ms | CWIST ms | Axum ms | CWIST req/s | Axum req/s |
 |---|---:|---:|---:|---:|---:|---:|
 | AMD EPYC 7763 64-Core Processor | 49 | 2.03 | 3.01 | 3.52 | 140,045 | 110,974 |
 | AMD EPYC 9V74 80-Core Processor | 24 | 1.67 | 2.62 | 2.71 | 163,113 | 145,238 |
