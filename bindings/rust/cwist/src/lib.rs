@@ -43,7 +43,9 @@
 mod app;
 mod error;
 mod http;
+mod server;
 
 pub use app::App;
 pub use error::Error;
 pub use http::{Method, Request, Response};
+pub use server::shutdown;
