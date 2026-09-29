@@ -2787,7 +2787,7 @@ static int h2_send_response_hc(h2_conn *hc, uint32_t stream_id, cwist_http_respo
             sent += allowed;
         }
     }
-    return 0;
+    return h2_out_flush(hc);
 }
 
 /* --- CONTINUATION & Header Assembly --- */
