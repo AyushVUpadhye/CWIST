@@ -394,7 +394,6 @@ static bool http_spawn_worker(void) {
 }
 
 int cwist_http_pool_init(void) {
-    atomic_store(&g_http_pool_stopping, false);
     const char *c1m = getenv("CWIST_C1M_MODE");
     bool use_c1m = true;
     if (c1m) {
@@ -402,7 +401,11 @@ int cwist_http_pool_init(void) {
             use_c1m = false;
         }
     }
+    return cwist_http_pool_init_mode(use_c1m);
+}
 
+int cwist_http_pool_init_mode(bool use_c1m) {
+    atomic_store(&g_http_pool_stopping, false);
     g_http_thread_count = get_optimal_thread_count();
 
     if (use_c1m) {
