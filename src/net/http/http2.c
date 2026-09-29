@@ -803,8 +803,17 @@ static int h2_wait_readable(h2_conn *hc, uint64_t deadline_ms) {
         int pret = poll(pfd, nfd, wait_ms);
         if (pret < 0) return -1;
         if (pret > 0) {
-            if (pfd[0].revents & POLLIN) return 0;
             if (nfd == 2 && (pfd[1].revents & POLLIN)) return 1;
+            if (pfd[0].revents & POLLIN) {
+                if (afd >= 0 && hc->async_q) {
+                    /* If async queue has pending completions, drain them first */
+                    pthread_mutex_lock(&hc->async_q->mu);
+                    bool has_items = (hc->async_q->head != NULL);
+                    pthread_mutex_unlock(&hc->async_q->mu);
+                    if (has_items) return 1;
+                }
+                return 0;
+            }
             return 0; /* error/hup on the socket: let the read path report it */
         }
     }
@@ -1806,7 +1815,7 @@ static size_t h2_encode_response_headers(cwist_http_response *res, unsigned char
     else if (res->body)
         body_len = res->body->size;
 
-    if (!grpc_mode && !bodyless && !headers_have_content_length(res->headers)) {
+    if (!grpc_mode && !bodyless) {
         char cl_str[32];
         snprintf(cl_str, sizeof(cl_str), "%zu", body_len);
         int name_idx = h2_static_table_find_name("content-length");
@@ -1834,6 +1843,11 @@ static size_t h2_encode_response_headers(cwist_http_response *res, unsigned char
     cwist_http_header_node *curr = res->headers;
     while (curr) {
         if (!curr->key || !curr->key->data || !curr->value || !curr->value->data) {
+            curr = curr->next;
+            continue;
+        }
+        /* RFC 9113: skip content-length (already encoded from body_len) */
+        if (strcasecmp(curr->key->data, "content-length") == 0) {
             curr = curr->next;
             continue;
         }
@@ -2778,7 +2792,7 @@ static int h2_send_response_hc(h2_conn *hc, uint32_t stream_id, cwist_http_respo
             sent += allowed;
         }
     }
-    return 0;
+    return h2_out_flush(hc);
 }
 
 /* --- CONTINUATION & Header Assembly --- */
