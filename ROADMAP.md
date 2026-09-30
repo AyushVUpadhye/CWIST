@@ -25,6 +25,15 @@
 [P4: Ecosystem]      ████████████████░░░░  80% (gRPC client retry policy and load balancing done)
 ```
 
+### v3.8 Release Progress
+
+| Phase | Theme | Progress |
+|-------|-------|----------|
+| Phase 1 — Performance | Reactor latency, RX-uring pipelining, close-drain correctness | Started: HTTP close/drain/churn fixes landed; worker warmup and HTTPS shepherd branches in flight |
+| Phase 2 — Rust FFI | `bindings/rust/` (`cwist-sys` + `cwist`) | Not started |
+| Phase 3 — HTTP/3 Close Correctness | Re-pin lsquic after upstream fixes | Blocked on lsquic #688, #687, #693; cutoff 2026-10-09 |
+| Phase 4 — v4.0 Scope Confirmation | Enact v3.7 Phase 5 decisions, record experimental-item fates | Not started |
+
 ### 1) Transport Layer
 
 * **Native protocols ready**: HTTP/1.1 through HTTP/3 (QUIC via `lsquic`), WebSocket, SSE, and a bounded GraphQL query layer are implemented in-tree (WebTransport server/client evaluation is isolated to `dev`). Low-level socket controls (ECN, 0-RTT, connection migration) are complete.
@@ -67,7 +76,11 @@ Automated OS benchmark history is published in `docs/benchmark-trends.svg`. Late
 - **Resolved (v3.4 perf wave)**: C1M reactor tail latency — request batches now yield cooperatively (`CWIST_HTTP_YIELD_BATCH`), batch responses coalesce into one writev per turn (256 KiB stash), reactor wake eventfds are registered with the ring (`IORING_REGISTER_EVENTFD`), and post bursts coalesce to a single wake. P99.999 CI measurement fixed end-to-end (lua output format + `$GITHUB_WORKSPACE` script path).
 - **Resolved (v3.4 perf wave)**: BDR cache learn/read paths are lock-free (CAS-published entries, atomic blob swaps, EBR reclamation) and entries support hit-time revalidation hooks with zero-copy pointer swaps (`cwist_bdr_put_revalidatable`); classic pool gained `CWIST_POOL_PREWARM` / `CWIST_POOL_IDLE_TIMEOUT_MS` tunables; the HTTPS handshake shepherd shard count is tunable via `CWIST_HTTPS_HS_SHARDS`.
 - **Resolved (v3.4 gRPC client wave)**: gRPC client retry policy and client-side load balancing are done — `cwist_grpc_channel` resolves dns/ipv4/ipv6 targets into per-address subchannels with connection backoff (doc/connection-backoff.md), balances calls with `pick_first`/`round_robin` (doc/load-balancing.md), and runs the gRFC A6 retry engine (jittered exponential backoff, retryable codes, server pushback, token-bucket throttling, transparent retries, commit-on-headers) configured via C structs or JSON service config. Error responses are Trailers-Only on both unary and streaming server paths so retries can actually happen; `test_grpc_channel` covers the matrix against loopback backends plus a raw GOAWAY fake.
-- We are now in the **P2–P4 tooling and ecosystem phase**. Completed multiport, scheduler, test-client, `io_uring`, deferred async handlers, end-to-end streaming gRPC (DATA-frame wiring, trailers, deadlines, gzip), and Protobuf wire-format work remain covered by focused regression tests.
+- **CWIST v3.7.2 released 2026-09-29**: WASI 0.2 formally supported, WASM component pipeline evaluated, durable queue and GraphQL subscriptions shipped behind flags.
+- **CWIST v3.8 in progress**: theme is *performance, Rust FFI, and v4.0 scope confirmation*. WebTransport moved to v4.1 on 2026-09-25.
+- **Landed on `dev` since v3.7.2**: HTTP close-drain correctness (#292), HTTPS connection-churn optimization (#291), Rust listen-shutdown support (#287).
+- **In flight**: worker ttak calibration warmup, HTTPS shepherd O1 optimization, Rust panic payload handling, ORM socket trust-boundary docs.
+- **Blocked**: HTTP/3 connection-close correctness depends on lsquic upstream #688, #687, #693.
 
 ---
 
@@ -190,32 +203,93 @@ Automated OS benchmark history is published in `docs/benchmark-trends.svg`. Late
 
 ---
 
-## Current Focus (v3.8: performance, Rust FFI, and v4.0 scope confirmation)
+## CWIST v3.8 Roadmap (In Progress)
 
 v3.7 is released. WebTransport moved to v4.1 on 2026-09-25 (see the v4.1
 section below), so v3.8 spends its cycle on work CWIST controls end to end:
 closing the measured latency gaps, making CWIST callable from Rust, and
-confirming the v4.0 scope.
+confirming the v4.0 scope. Discussion: https://github.com/c4punks/CWIST/discussions/268.
 
-### Performance
+Entry criteria for v3.8: every item must (a) move a measured performance
+number, (b) serve the Rust bindings, (c) close a correctness gap carried over
+from v3.7, or (d) resolve a v4.0 blocker. New public C API is allowed only when
+it is additive. Scope does not grow; anything not ready slips.
 
-* Attribute and close the gap between the default reactor path and CWIST
-  Classic, and the gap to Axum on the Intel runner models.
-* Open the tail-latency successor to #166 and re-measure against Axum.
-* Prove or drop the RX-uring pipelining win (#179) with a pipelined workload.
+### v3.8 Status at a Glance
 
-### Rust FFI
+| Phase | Goal | Status | Next Actions |
+|-------|------|--------|--------------|
+| **1 — Performance** | Close reactor/Classic/Axum latency gaps; validate RX-uring pipelining | In progress | Run `CWIST_LATENCY_PROBE` gap analysis; open #166 successor; add pipelined workload; finish `perf/worker-ttak-calibration-warmup` and `perf/https-shepherd-o1-pending` |
+| **2 — Rust FFI** | Make CWIST callable from Rust (`cwist-sys` + `cwist`) | Not started | Create `bindings/rust/`; add additive `_ex` route registration; export `static inline` wrappers; add layout assertion tests; write `example/rust-hello/`; integrate `cargo test` into CI |
+| **3 — HTTP/3 close correctness** | Re-pin lsquic when upstream fixes land; add CONNECTION_CLOSE interop gate | Blocked on upstream | Track lsquic #688, #687, #693; build h3spec-style gate; add pinned-commit CI check; cutoff 2026-10-09 |
+| **4 — v4.0 scope confirmation** | Enact v3.7 Phase 5 decisions and record v4.0 fate for every experimental item | Not started | Promote full GC/malloc interception to supported opt-in; record decisions for GraphQL subscriptions, durable queue, Redis/NATS borrow, WASM component pipeline; audit stale experimental docs |
 
-* `bindings/rust/` with `cwist-sys` (raw) and `cwist` (safe wrapper), built on
-  the C ABI (issue #36, Plan A).
-* C-side FFI enablers, all additive (per-route user context,
-  exported wrappers for `static inline` helpers, struct layout checks).
+### Phase 1 — Performance
 
-### v4.0 scope confirmation
+Every item lands with before/after numbers from the CI benchmark or a checked-in
+microbenchmark, or with a recorded negative result.
 
-* Enact the v3.7 Phase 5 promotion decisions in code and docs.
-* Record a v4.0 decision for every experimental item that still lacks one.
-* HTTP/3 connection-close gate; re-pin lsquic when the upstream fixes merge.
+| Work Item | Why It Matters | How to Measure | Status |
+|-----------|----------------|----------------|--------|
+| Reactor vs Classic vs Axum latency gap | Default reactor path trails Classic and Axum on Intel runners | README per-runner table + `CWIST_LATENCY_PROBE` queue/callback split | Not started |
+| #166 tail-latency successor | Re-measure p99/p99.9 against Axum on the current reactor | Open successor issue; run CI benchmark on same runner CPU | Not started |
+| RX-uring pipelining (#179) | The "pipelining win" is still unproven | Add pipelined workload; compare with/without per-connection learn flag | Not started |
+| Measurement discipline | Runner CPU model moves numbers more than most code changes | Compare within one runner-CPU column, or use checked-in microbenchmark | Ongoing |
+| Worker ttak calibration warmup | Reduce cold-start variance | `perf/worker-ttak-calibration-warmup` branch | In progress |
+| HTTPS shepherd O1 pending | HTTPS handshake path optimization | `perf/https-shepherd-o1-pending` branch | In progress |
+
+### Phase 2 — Rust FFI
+
+Layout: an in-tree `bindings/rust/` workspace with `cwist-sys` (bindgen output
+that links `libcwist.a` through `cwist.pc`) and `cwist` (the safe wrapper).
+
+| Work Item | What Changes | C-Side Impact |
+|-----------|--------------|---------------|
+| Per-route user context | Additive `_ex` registration functions that carry `void *user_ctx` + optional destructor | New symbols only; existing signatures unchanged |
+| `static inline` helpers | Export wrappers (or use bindgen `--wrap-static-fns`) so bindgen can see them | New symbols only |
+| Struct layout | Decide per field between accessor and bindgen layout access; add layout assertion tests | New layout tests; existing structs unchanged |
+| Safe wrapper scope | App lifecycle, routing with closures, request/response access, middleware, graceful shutdown, deferred async | None |
+| Memory model | Rust allocations stay outside `cwist_alloc`; full GC and `CWIST_INTERCEPT_MALLOC` do not apply to Rust code | Documentation only |
+| CI and measurement | `cargo test` on Linux/macOS, `example/rust-hello/`, FFI overhead measured vs C equivalent | New CI job |
+
+Status at the v3.8 cut: experimental, crate version 0.x, not yet published to
+crates.io. The v4.0 decision (publish, or keep in-tree) is recorded before v4.0
+cuts.
+
+### Phase 3 — HTTP/3 Connection-Close Correctness
+
+The CWIST-side half is done. The three lsquic fixes are open upstream as
+#688 (triggering frame type), #687 (close packet number space selection), and
+#693 (pre-handshake fallback); all three are mergeable.
+
+| Work Item | Deadline | Fallback |
+|-----------|----------|----------|
+| Re-pin `lib/lsquic` to upstream release containing #688, #687, #693 | 2026-10-09 | Mark affected gate cases expected-fail; move re-pin to v4.0 RC |
+| Build h3spec-style CONNECTION_CLOSE interop gate | v3.8 | N/A |
+| Keep `test_http3` Test 12 pinning peer-abort close path | v3.8 | N/A |
+| Add CI gate that fails if pinned lsquic commit lacks required fixes | v3.8 | N/A |
+
+### Phase 4 — v4.0 Scope Confirmation
+
+| Decision Source | Action |
+|-----------------|--------|
+| v3.7 Phase 5 | Promote full GC and malloc interception to *supported opt-in* (`CWIST_DEFER_FREE`, `CWIST_INTERCEPT_MALLOC`); keep `CWIST_PROFILE` matrix as v4.0 default story; keep latency probe hidden opt-in; keep HTTP batch-shed counter always-on |
+| Experimental items | Record v4.0 decision for GraphQL subscriptions (`graphql_ws.h`), durable job queue (`durable_queue.h`), Redis RESP2 reply tree and NATS connection borrow, and WASM component pipeline (#203) |
+| WebTransport tutorial | Keep experimental until v4.1 |
+| Docs | Audit stale experimental caveats |
+
+### Release Criteria for v3.8
+
+- Every Phase 1 item has before/after numbers or a recorded negative result.
+- `bindings/rust` builds and passes tests in CI on Linux and macOS, the Rust
+  example serves requests, and the FFI overhead is measured.
+- The C API additions for FFI are additive only; no existing symbol changes.
+- The HTTP/3 connection-close gate exists, passing or expected-fail per the
+  cutoff rule.
+- Every experimental item has a recorded v4.0 decision, and the v3.7 Phase 5
+  decisions are enacted in code and docs.
+- CI is green on the exact release commit.
+
 
 ### gRPC / Protobuf Status
 
@@ -395,107 +469,9 @@ delaying the cut.
 
 ---
 
-## v3.8 Milestone (In Progress)
+## v3.8 Release Criteria and v4.0 Preview
 
-Theme: **performance and Rust FFI, plus v4.0 scope confirmation**. v3.7 shipped the
-WASM edge story and the ecosystem experimental support. WebTransport no longer
-belongs to v3.8: it moved to v4.1 on 2026-09-25. LSQUIC PR #629 is still an
-unmerged draft that conflicts with upstream master, and upstream has not
-replied since the 2026-08-15 inquiry. Waiting on it would stall the 3.x line
-or force a pin to a topic branch, which v3.7 already ruled out. v3.8 instead
-takes two goals CWIST controls end to end, performance and Rust bindings, and
-confirms the v4.0 scope: which API v4.0 supports, keeps opt-in, or removes.
-Stability stays the focus through v4.0; expansion resumes in v4.1.
-Discussion: https://github.com/c4punks/CWIST/discussions/268.
-
-Entry criteria for v3.8: every item must (a) move a measured performance
-number, with before/after data from the CI benchmark or a checked-in
-microbenchmark, (b) serve the Rust bindings, (c) close a correctness gap
-carried over from v3.7, or (d) resolve a v4.0 blocker. New public C API is
-allowed when it is additive: it adds symbols and never changes an existing
-signature, behavior, or public struct layout. Scope does not grow; anything
-not ready slips.
-
-* **Phase 1: performance** (every item lands with before/after numbers, or
-  closes with a recorded negative result as the mimalloc evaluation did):
-  * Reactor vs Classic latency: in the README per-runner-CPU table, the
-    default reactor path (CWIST) has a higher average latency than CWIST
-    Classic on every runner model, and it trails Axum on both Intel runner
-    models recorded so far (Xeon Platinum 8573C 2.33 vs 1.78 ms, Xeon 6973P-C
-    1.77 vs 1.61 ms, one run each). Split the gap into queue delay and callback
-    time with `CWIST_LATENCY_PROBE`, then close it or document it with numbers
-    as the cost of C1M scalability.
-  * Tail latency successor to #166: #166 closed at v3.7 with the promise of a
-    successor issue after v3.7 measurement. Open it and re-measure p99/p99.9
-    against Axum on the current reactor.
-  * RX-uring pipelining (#179): the pipelining win is still unproven. Add a
-    pipelined workload to the benchmark, then keep or drop the per-connection
-    learn flag based on the data.
-  * Measurement discipline: the runner CPU model moves the numbers more than
-    most code changes do, so v3.8 performance claims compare within one
-    runner-CPU column or use a checked-in microbenchmark.
-
-* **Phase 2: Rust FFI** (issue #36, Plan A: C ABI and FFI):
-  * Layout: an in-tree `bindings/rust/` workspace with `cwist-sys` (bindgen
-    output that links `libcwist.a` through `cwist.pc`) and `cwist` (the safe
-    wrapper).
-  * C-side enablers (additive; existing symbols unchanged):
-    * Per-route user context. `cwist_http_handler_func` takes only
-      `(req, res)`, so a Rust closure cannot be registered as a route. Add
-      additive `_ex` registration functions that carry `void *user_ctx` and an
-      optional destructor, mirroring the `user_ctx` that
-      `cwist_http2_request_handler_func` and `cwist_http3_request_handler_func`
-      already take.
-    * `static inline` helpers. bindgen cannot see the `static inline`
-      functions in the public headers. Export wrappers for them (or use
-      bindgen `--wrap-static-fns`), with a CI check that catches new ones.
-    * Struct layout. Request and response structs expose their fields,
-      including internal ones. Decide per field between an accessor and
-      bindgen layout access, and add layout assertion tests so a struct change
-      fails CI instead of corrupting Rust memory.
-  * Safe wrapper scope for v3.8: app lifecycle, routing with closures,
-    request/response access, middleware, graceful shutdown, and deferred async
-    (`cwist_async_defer`) bridged to Rust threads. A Rust panic never unwinds
-    across the FFI boundary: it is caught and turned into a 500.
-  * Memory model: Rust allocations stay outside `cwist_alloc`; document that
-    full GC and `CWIST_INTERCEPT_MALLOC` do not apply to Rust code.
-  * CI and measurement: `cargo test` against the in-tree library on Linux and
-    macOS, an `example/rust-hello/` app, and FFI overhead measured against the
-    same app written in C.
-  * Status at the v3.8 cut: experimental, crate version 0.x, not yet
-    published to crates.io. The v4.0 decision (publish, or keep in-tree) is
-    recorded here before v4.0 cuts.
-
-* **Phase 3: HTTP/3 connection-close correctness** (from v3.7; no longer tied
-  to WebTransport):
-  * The three lsquic fixes are open upstream as #688 (triggering frame type),
-    #687 (close packet number space selection), and #693 (pre-handshake
-    fallback); all three are mergeable. Re-pin `lib/lsquic` to the upstream
-    release that contains them.
-  * Cutoff 2026-10-09: if they are not merged by then, v3.8 ships with the
-    affected gate cases marked expected-fail, and the re-pin moves to the v4.0
-    release candidate.
-  * Build the h3spec-style interop gate for received and emitted
-    CONNECTION_CLOSE frames against the current pin now, including the
-    pre-handshake fallback path, and keep `test_http3` Test 12 pinning the
-    peer-abort close path.
-  * Add a CI gate that fails if the pinned `lib/lsquic` commit no longer
-    contains the required fixes.
-
-* **Phase 4: v4.0 scope confirmation**:
-  * Enact the v3.7 Phase 5 decisions: full GC and malloc interception become
-    *supported opt-in* (`CWIST_DEFER_FREE`, `CWIST_INTERCEPT_MALLOC`), the
-    `CWIST_PROFILE` matrix stays the v4.0 default story, the latency probe
-    stays hidden opt-in, and the HTTP batch-shed counter stays always-on.
-  * Record a v4.0 decision for every v3.7 experimental item that still lacks
-    one: GraphQL subscriptions (`graphql_ws.h`), the durable job queue
-    (`durable_queue.h`), the Redis RESP2 reply tree and NATS connection borrow,
-    and the WASM component pipeline (#203). The WebTransport server tutorial
-    stays experimental until v4.1.
-  * Audit docs for stale experimental caveats.
-  * Run the full CI matrix on the release candidate: sanitizers, NDEBUG,
-    classic and C1M modes, the interop gates, and the Rust bindings. No source
-    changes after the candidate passes except release-metadata commits.
+The detailed plan for v3.8 lives in the [CWIST v3.8 Roadmap](#cwist-v38-roadmap-in-progress) section above. This section keeps the release gate and the v4.0 transition note in one place.
 
 **Release criteria for v3.8:**
 - Every Phase 1 item has before/after numbers or a recorded negative result.
