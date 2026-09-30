@@ -185,20 +185,20 @@ missing optional API does not prevent an HTTP/3 build.
   ./server
 
 <!-- BENCHMARKS:START -->
-Latest automated benchmark: **Darwin**: 15.17 M leases/s, 135.04% CPU, 767664 KiB RSS.
+Latest automated benchmark: **Darwin**: 15.25 M leases/s, 129.02% CPU, 766880 KiB RSS.
 
 ![CWIST benchmark trends](docs/benchmark-trends.svg)
 <!-- BENCHMARKS:END -->
 
 <!-- WEBSERVER_BENCHMARKS:START -->
 Latest Web Server Benchmark (wrk -t12 -c400 -d10s (after 10s warmup, warmup discarded)):
-- **CWIST Classic pool**: 111879 req/s | Latency 2.07ms (P90 4.26ms, P99 7.97ms, P99.999 21.37ms) | RSS 16160KiB | Csw 1093272
-- **CWIST reactor**: 135729 req/s | Latency 2.89ms (P90 5.10ms, P99 7.88ms, P99.999 13.34ms) | RSS 6936KiB | Csw 121186
-- **CWIST reactor (arena_max=1)** — glibc arena cap adopted in PR #35 after mimalloc was tried and refuted (issue #25); this line confirms the decision on every run: 136520 req/s | Latency 2.87ms (P90 5.08ms, P99 7.82ms, P99.999 16.25ms) | RSS 8168KiB | Csw 120785
-- **CWIST reactor (drain_chunk=8)** — cooperative queuing for cwist_async_defer completions within a big io_uring batch (issue #25, docs/cooperative-queuing.md); this workload has no cwist_async_defer traffic to interleave, so parity with the plain CWIST row above is the expected result, not a null finding — the tail-latency win is isolated directly in tests/bench_cooperative_queuing.c: 137900 req/s | Latency 2.85ms (P90 5.06ms, P99 7.81ms, P99.999 13.84ms) | RSS 6888KiB | Csw 127044
-- **Axum**: 108540 req/s | Latency 3.61ms (P90 6.11ms, P99 9.07ms, P99.999 15.96ms) | RSS 16860KiB | Csw 201046
-- **Gin (Go)**: 74755 req/s | Latency 7.68ms (P90 19.40ms, P99 42.40ms, P99.999 93.10ms) | RSS 29580KiB | Csw 326478
-- **Spring Boot**: 41765 req/s | Latency 9.54ms (P90 12.58ms, P99 20.17ms, P99.999 73.43ms) | RSS 1303216KiB | Csw 223036
+- **CWIST Classic pool**: 237922 req/s | Latency 1.05ms (P90 2.29ms, P99 5.65ms, P99.999 41.13ms) | RSS 17116KiB | Csw 2251143
+- **CWIST reactor**: 307192 req/s | Latency 1.41ms (P90 3.03ms, P99 5.32ms, P99.999 11.65ms) | RSS 7020KiB | Csw 336139
+- **CWIST reactor (arena_max=1)** — glibc arena cap adopted in PR #35 after mimalloc was tried and refuted (issue #25); this line confirms the decision on every run: 304575 req/s | Latency 1.41ms (P90 2.99ms, P99 5.28ms, P99.999 11.26ms) | RSS 7884KiB | Csw 331149
+- **CWIST reactor (drain_chunk=8)** — cooperative queuing for cwist_async_defer completions within a big io_uring batch (issue #25, docs/cooperative-queuing.md); this workload has no cwist_async_defer traffic to interleave, so parity with the plain CWIST row above is the expected result, not a null finding — the tail-latency win is isolated directly in tests/bench_cooperative_queuing.c: 305140 req/s | Latency 1.41ms (P90 3.02ms, P99 5.32ms, P99.999 13.96ms) | RSS 6940KiB | Csw 325432
+- **Axum**: 244033 req/s | Latency 1.64ms (P90 2.94ms, P99 4.62ms, P99.999 10.27ms) | RSS 18376KiB | Csw 523353
+- **Gin (Go)**: 191040 req/s | Latency 3.61ms (P90 9.64ms, P99 22.43ms, P99.999 57.07ms) | RSS 30948KiB | Csw 999096
+- **Spring Boot**: 129522 req/s | Latency 3.07ms (P90 4.41ms, P99 6.51ms, P99.999 33.67ms) | RSS 1299440KiB | Csw 631603
 
 **Spring runtime environment**
 
@@ -248,9 +248,9 @@ GitHub hands out a different CPU model per run, which moves these numbers more t
 |---|---:|---:|---:|---:|---:|---:|
 | AMD EPYC 7763 64-Core Processor | 54 | 2.04 | 3.00 | 3.54 | 141,166 | 110,353 |
 | AMD EPYC 9V74 80-Core Processor | 23 | 1.64 | 2.65 | 2.67 | 180,266 | 147,459 |
+| Intel(R) Xeon(R) 6973P-C | 9 | 0.98 | 1.65 | 1.64 | 312,637 | 244,033 |
 | AMD EPYC 9V45 96-Core Processor | 8 | 1.27 | 2.31 | 2.04 | 223,637 | 195,375 |
-| Intel(R) Xeon(R) 6973P-C | 8 | 0.97 | 1.69 | 1.63 | 313,773 | 243,774 |
-| INTEL(R) XEON(R) PLATINUM 8573C | 6 | 1.12 | 1.94 | 1.86 | 267,459 | 210,991 |
+| INTEL(R) XEON(R) PLATINUM 8573C | 5 | 1.15 | 1.89 | 1.92 | 263,319 | 203,941 |
 | Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz | 1 | 1.41 | 2.43 | 2.39 | 215,862 | 165,616 |
 <!-- WEBSERVER_BENCHMARKS:END -->
 
