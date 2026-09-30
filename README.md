@@ -49,8 +49,8 @@ changes do. They are not universal guarantees.
 <!-- TUNED_BENCHMARK:START -->
 **Tuned low-latency run (wrk -t4 -c100 -d10s (after 10s warmup, warmup discarded)), CWIST vs Axum on identical concurrency:**
 
-- **CWIST**: 114,003 req/s at 0.54ms average latency (P50 0.42ms, P90 1.02ms, P99 2.28ms)
-- **Axum**: 120,635 req/s at 0.78ms average latency (P50 0.68ms, P90 1.44ms, P99 2.56ms), same binary as the main run above
+- **CWIST**: 250,753 req/s at 0.26ms average latency (P50 0.20ms, P90 0.41ms, P99 1.70ms)
+- **Axum**: 230,085 req/s at 0.42ms average latency (P50 0.37ms, P90 0.74ms, P99 1.39ms), same binary as the main run above
 
 These runs use a different concurrency budget from the main table. They do not establish a causal scheduling explanation or a universal tail-latency improvement.
 <!-- TUNED_BENCHMARK:END -->
@@ -152,13 +152,13 @@ int main(void) {
 
 <!-- WEBSERVER_BENCHMARKS:START -->
 Latest Web Server Benchmark (wrk -t12 -c400 -d10s (after 10s warmup, warmup discarded)):
-- **CWIST Classic pool**: 118627 req/s | Latency 1.99ms (P90 4.17ms, P99 8.04ms, P99.999 26.62ms) | RSS 17968KiB | Csw 1089817
-- **CWIST reactor**: 138413 req/s | Latency 2.86ms (P90 4.96ms, P99 8.09ms, P99.999 27.98ms) | RSS 8776KiB | Csw 120457
-- **CWIST reactor (arena_max=1)** — glibc arena cap adopted in PR #35 after mimalloc was tried and refuted (issue #25); this line confirms the decision on every run: 136898 req/s | Latency 2.89ms (P90 5.02ms, P99 8.19ms, P99.999 21.70ms) | RSS 7840KiB | Csw 116202
-- **CWIST reactor (drain_chunk=8)** — cooperative queuing for cwist_async_defer completions within a big io_uring batch (issue #25, docs/cooperative-queuing.md); this workload has no cwist_async_defer traffic to interleave, so parity with the plain CWIST row above is the expected result, not a null finding — the tail-latency win is isolated directly in tests/bench_cooperative_queuing.c: 137406 req/s | Latency 2.89ms (P90 5.27ms, P99 8.21ms, P99.999 13.71ms) | RSS 6824KiB | Csw 124288
-- **Axum**: 111475 req/s | Latency 3.52ms (P90 5.94ms, P99 8.82ms, P99.999 17.08ms) | RSS 16764KiB | Csw 199752
-- **Gin (Go)**: 79895 req/s | Latency 6.79ms (P90 16.45ms, P99 37.22ms, P99.999 80.86ms) | RSS 30524KiB | Csw 304950
-- **Spring Boot**: 43525 req/s | Latency 9.12ms (P90 12.12ms, P99 18.57ms, P99.999 63.42ms) | RSS 1310808KiB | Csw 227636
+- **CWIST Classic pool**: 231708 req/s | Latency 1.13ms (P90 2.47ms, P99 7.03ms, P99.999 43.55ms) | RSS 17756KiB | Csw 2198943
+- **CWIST reactor**: 291756 req/s | Latency 1.46ms (P90 3.05ms, P99 5.25ms, P99.999 13.38ms) | RSS 6976KiB | Csw 341347
+- **CWIST reactor (arena_max=1)** — glibc arena cap adopted in PR #35 after mimalloc was tried and refuted (issue #25); this line confirms the decision on every run: 293407 req/s | Latency 1.43ms (P90 3.01ms, P99 5.14ms, P99.999 9.56ms) | RSS 8116KiB | Csw 329947
+- **CWIST reactor (drain_chunk=8)** — cooperative queuing for cwist_async_defer completions within a big io_uring batch (issue #25, docs/cooperative-queuing.md); this workload has no cwist_async_defer traffic to interleave, so parity with the plain CWIST row above is the expected result, not a null finding — the tail-latency win is isolated directly in tests/bench_cooperative_queuing.c: 295975 req/s | Latency 1.45ms (P90 3.08ms, P99 5.43ms, P99.999 12.29ms) | RSS 6936KiB | Csw 328275
+- **Axum**: 237170 req/s | Latency 1.65ms (P90 2.99ms, P99 4.76ms, P99.999 9.60ms) | RSS 16416KiB | Csw 463859
+- **Gin (Go)**: 174069 req/s | Latency 3.89ms (P90 10.39ms, P99 23.90ms, P99.999 50.00ms) | RSS 29664KiB | Csw 878070
+- **Spring Boot**: 128160 req/s | Latency 3.09ms (P90 4.42ms, P99 6.50ms, P99.999 37.69ms) | RSS 1323560KiB | Csw 632569
 
 **Spring runtime environment**
 
@@ -206,10 +206,10 @@ GitHub hands out a different CPU model per run, which moves these numbers more t
 
 | Runner CPU | Runs | CWIST Classic ms | CWIST ms | Axum ms | CWIST req/s | Axum req/s |
 |---|---:|---:|---:|---:|---:|---:|
-| AMD EPYC 7763 64-Core Processor | 52 | 2.04 | 3.00 | 3.54 | 141,522 | 110,667 |
+| AMD EPYC 7763 64-Core Processor | 51 | 2.03 | 3.00 | 3.54 | 141,541 | 110,623 |
 | AMD EPYC 9V74 80-Core Processor | 24 | 1.63 | 2.64 | 2.66 | 178,653 | 147,481 |
+| Intel(R) Xeon(R) 6973P-C | 9 | 0.98 | 1.74 | 1.64 | 312,637 | 241,483 |
 | AMD EPYC 9V45 96-Core Processor | 8 | 1.27 | 2.31 | 2.04 | 223,637 | 195,375 |
-| Intel(R) Xeon(R) 6973P-C | 8 | 0.97 | 1.77 | 1.63 | 313,773 | 243,774 |
 | INTEL(R) XEON(R) PLATINUM 8573C | 6 | 1.12 | 1.94 | 1.86 | 267,459 | 210,991 |
 | Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz | 2 | 1.40 | 2.29 | 2.35 | 201,973 | 167,709 |
 <!-- WEBSERVER_BENCHMARKS:END -->
