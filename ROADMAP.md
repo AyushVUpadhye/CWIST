@@ -31,7 +31,7 @@
 |-------|-------|----------|
 | Phase 1 — Performance | Reactor latency, RX-uring pipelining, close-drain correctness | Started: HTTP close/drain/churn fixes landed; worker warmup and HTTPS shepherd branches in flight |
 | Phase 2 — Rust FFI | `bindings/rust/` (`cwist-sys` + `cwist`) | Not started |
-| Phase 3 — HTTP/3 Close Correctness | Re-pin lsquic after upstream fixes | Blocked on lsquic #688, #687, #693; cutoff 2026-10-09 |
+| Phase 3 — HTTP/3 Close Correctness | Re-pin lsquic after upstream fixes | Deferred indefinitely — waiting for upstream lsquic to ship WebTransport client support |
 | Phase 4 — v4.0 Scope Confirmation | Enact v3.7 Phase 5 decisions, record experimental-item fates | Not started |
 
 ### 1) Transport Layer
@@ -80,7 +80,7 @@ Automated OS benchmark history is published in `docs/benchmark-trends.svg`. Late
 - **CWIST v3.8 in progress**: theme is *performance, Rust FFI, and v4.0 scope confirmation*. WebTransport moved to v4.1 on 2026-09-25.
 - **Landed on `dev` since v3.7.2**: HTTP close-drain correctness (#292), HTTPS connection-churn optimization (#291), Rust listen-shutdown support (#287).
 - **In flight**: worker ttak calibration warmup, HTTPS shepherd O1 optimization, Rust panic payload handling, ORM socket trust-boundary docs.
-- **Blocked**: HTTP/3 connection-close correctness depends on lsquic upstream #688, #687, #693.
+- **Deferred**: HTTP/3 connection-close correctness and the lsquic re-pin are on hold until upstream lsquic ships WebTransport client support.
 
 ---
 
@@ -99,7 +99,7 @@ Automated OS benchmark history is published in `docs/benchmark-trends.svg`. Late
 | **io_uring Backend** | ✅ | io_uring readiness multiplexer in `src/sys/io/reactor.c` (one-shot POLL_ADD wait layer, epoll fallback); request I/O hot path stays synchronous |
 | **kqueue Backend** | ✅ | `src/sys/io/kqueue.c`, BSD/macOS I/O multiplexing event loop, integration tests in GitHub Actions CI gate |
 | HTTP/2 Server Push | ✅ | `cwist_http2_push_resource` with PUSH_PROMISE frame, HPACK encoding, server-initiated even stream IDs |
-| **WebTransport** | ⏳ / 🔮 | Excluded from `main`; experimental WebTransport server/native C client proposal (LSQUIC PR #629) is evaluated exclusively on `dev` |
+| **WebTransport** | ⏳ / 🔮 | Excluded from `main`; experimental WebTransport server/native C client work stays on `dev` until upstream lsquic ships WebTransport client support; no topic-branch pin |
 | HTTP/3 Datagram Extension | ✅ | `send_datagram`, callbacks, `es_datagrams` enabled |
 | ECN (Explicit Congestion Notification) | ✅ | UDP socket with `IP_RECVTOS` / `IPV6_RECVTCLASS` |
 | Connection Migration | ✅ | `es_allow_migration` enabled |
@@ -221,7 +221,7 @@ it is additive. Scope does not grow; anything not ready slips.
 |-------|------|--------|--------------|
 | **1 — Performance** | Close reactor/Classic/Axum latency gaps; validate RX-uring pipelining | In progress | Run `CWIST_LATENCY_PROBE` gap analysis; open #166 successor; add pipelined workload; finish `perf/worker-ttak-calibration-warmup` and `perf/https-shepherd-o1-pending` |
 | **2 — Rust FFI** | Make CWIST callable from Rust (`cwist-sys` + `cwist`) | Not started | Create `bindings/rust/`; add additive `_ex` route registration; export `static inline` wrappers; add layout assertion tests; write `example/rust-hello/`; integrate `cargo test` into CI |
-| **3 — HTTP/3 close correctness** | Re-pin lsquic when upstream fixes land; add CONNECTION_CLOSE interop gate | Blocked on upstream | Track lsquic #688, #687, #693; build h3spec-style gate; add pinned-commit CI check; cutoff 2026-10-09 |
+| **3 — HTTP/3 close correctness** | Re-pin lsquic when upstream fixes land; add CONNECTION_CLOSE interop gate | Deferred indefinitely | On hold until upstream lsquic ships WebTransport client support; no separate cutoff |
 | **4 — v4.0 scope confirmation** | Enact v3.7 Phase 5 decisions and record v4.0 fate for every experimental item | Not started | Promote full GC/malloc interception to supported opt-in; record decisions for GraphQL subscriptions, durable queue, Redis/NATS borrow, WASM component pipeline; audit stale experimental docs |
 
 ### Phase 1 — Performance
@@ -256,18 +256,19 @@ Status at the v3.8 cut: experimental, crate version 0.x, not yet published to
 crates.io. The v4.0 decision (publish, or keep in-tree) is recorded before v4.0
 cuts.
 
-### Phase 3 — HTTP/3 Connection-Close Correctness
+### Phase 3 — HTTP/3 Connection-Close Correctness (Deferred)
 
-The CWIST-side half is done. The three lsquic fixes are open upstream as
-#688 (triggering frame type), #687 (close packet number space selection), and
-#693 (pre-handshake fallback); all three are mergeable.
+The CWIST-side half is done, but the lsquic re-pin is now tied to upstream
+WebTransport client support rather than to the three standalone close-fix PRs.
+Until lsquic ships that support, CWIST stays on its current pin and does not
+chase #688, #687, or #693 separately.
 
-| Work Item | Deadline | Fallback |
-|-----------|----------|----------|
-| Re-pin `lib/lsquic` to upstream release containing #688, #687, #693 | 2026-10-09 | Mark affected gate cases expected-fail; move re-pin to v4.0 RC |
-| Build h3spec-style CONNECTION_CLOSE interop gate | v3.8 | N/A |
-| Keep `test_http3` Test 12 pinning peer-abort close path | v3.8 | N/A |
-| Add CI gate that fails if pinned lsquic commit lacks required fixes | v3.8 | N/A |
+| Work Item | Status | Rationale |
+|-----------|--------|-----------|
+| Re-pin `lib/lsquic` to upstream release containing #688, #687, #693 | Deferred | Rolled into the WebTransport-client-support re-pin; no separate lsquic update before then |
+| Build h3spec-style CONNECTION_CLOSE interop gate | Deferred | Gate needs the re-pinned lsquic behavior as the reference |
+| Keep `test_http3` Test 12 pinning peer-abort close path | Maintained | Existing regression coverage stays; no new gate until re-pin |
+| Add CI gate that fails if pinned lsquic commit lacks required fixes | Dropped | Replaced by the WebTransport-client-support precondition |
 
 ### Phase 4 — v4.0 Scope Confirmation
 
@@ -284,8 +285,8 @@ The CWIST-side half is done. The three lsquic fixes are open upstream as
 - `bindings/rust` builds and passes tests in CI on Linux and macOS, the Rust
   example serves requests, and the FFI overhead is measured.
 - The C API additions for FFI are additive only; no existing symbol changes.
-- The HTTP/3 connection-close gate exists, passing or expected-fail per the
-  cutoff rule.
+- Phase 3 (HTTP/3 connection-close correctness) remains deferred and is
+  explicitly not a v3.8 release blocker.
 - Every experimental item has a recorded v4.0 decision, and the v3.7 Phase 5
   decisions are enacted in code and docs.
 - CI is green on the exact release commit.
@@ -452,9 +453,10 @@ delaying the cut.
 * **Phase 2: WebTransport on the stable line**: ~~slipped to v3.8, then to v4.1~~ (see the v4.1
   section below): LSQUIC PR #629 has not merged, and the release-window rule
   says v3.7 ships without WebTransport rather than pinning to a topic branch.
-* **Phase 3: HTTP/3 connection-close correctness** — ~~slipped to v3.8~~ (see the
-  v3.8 section below): the CWIST-side half is done; the three lsquic fixes are
-  blocked on upstream and fold in at the next re-pin.
+* **Phase 3: HTTP/3 connection-close correctness** — ~~slipped to v3.8~~ (deferred
+  indefinitely): the CWIST-side half is done, but the lsquic re-pin is on hold
+  until upstream ships WebTransport client support; the three close-fix PRs fold
+  in with that re-pin rather than separately.
 * **Phase 4: ecosystem experimental support** (shipped behind flags, documented as experimental):
   * ~~gRPC server-side response compression~~ (done 2026-09-07 in `31b44d6f`, pre-v3.7; marked here so Phase 4 tracks only what remains).
   * ~~GraphQL subscriptions over the v3.6 non-blocking WebSocket transport~~ (done — graphql-transport-ws subprotocol in `cwist/graphql_ws.h` with a topic broker (`cwist_graphql_publish`) and reactor-thread-safe fanout; `test_graphql_subscriptions` covers the close-code matrix, streaming, and teardown purge).
@@ -478,8 +480,8 @@ The detailed plan for v3.8 lives in the [CWIST v3.8 Roadmap](#cwist-v38-roadmap-
 - `bindings/rust` builds and passes tests in CI on Linux and macOS, the Rust
   example serves requests, and the FFI overhead is measured.
 - The C API additions for FFI are additive only; no existing symbol changes.
-- The HTTP/3 connection-close gate exists, passing or expected-fail per the
-  cutoff rule.
+- Phase 3 (HTTP/3 connection-close correctness) remains deferred and is
+  explicitly not a v3.8 release blocker.
 - Every experimental item has a recorded v4.0 decision, and the v3.7 Phase 5
   decisions are enacted in code and docs.
 - CI is green on the exact release commit.
@@ -499,8 +501,10 @@ v4.1 is where expansion resumes after the v4.0 stabilization cycle. The
 first item is WebTransport, moved from v3.8 on 2026-09-25 (issue #17). It
 arrives as new API; nothing that exists at v4.0 changes.
 
-* Precondition: LSQUIC PR #629 (or its successor) is merged upstream; then
-  re-pin `lib/lsquic` to an upstream release. No topic-branch pin.
+* Precondition: upstream lsquic ships WebTransport client support (previously
+  tracked as LSQUIC PR #629); then re-pin `lib/lsquic` to that upstream release.
+  No topic-branch pin. The same re-pin also folds in the HTTP/3 connection-close
+  correctness fixes deferred from v3.8.
 * Port the dev-branch WebTransport server API (`cwist_http3_transport_*`,
   stream accept/read/write), the native C client, and
   `example/webtransport/`.
