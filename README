@@ -185,20 +185,20 @@ missing optional API does not prevent an HTTP/3 build.
   ./server
 
 <!-- BENCHMARKS:START -->
-Latest automated benchmark: **Darwin**: 13.24 M leases/s, 140.79% CPU, 718928 KiB RSS.
+Latest automated benchmark: **Darwin**: 17.51 M leases/s, 122.65% CPU, 675024 KiB RSS.
 
 ![CWIST benchmark trends](docs/benchmark-trends.svg)
 <!-- BENCHMARKS:END -->
 
 <!-- WEBSERVER_BENCHMARKS:START -->
 Latest Web Server Benchmark (wrk -t12 -c400 -d10s (after 10s warmup, warmup discarded)):
-- **CWIST Classic pool**: 160593 req/s | Latency 1.48ms (P90 3.11ms, P99 6.74ms, P99.999 27.52ms) | RSS 15904KiB | Csw 1625439
-- **CWIST reactor**: 178916 req/s | Latency 2.32ms (P90 4.14ms, P99 9.93ms, P99.999 40.73ms) | RSS 0KiB | Csw 146705
-- **CWIST reactor (arena_max=1)** — glibc arena cap adopted in PR #35 after mimalloc was tried and refuted (issue #25); this line confirms the decision on every run: 191761 req/s | Latency 2.11ms (P90 4.11ms, P99 6.78ms, P99.999 12.35ms) | RSS 7676KiB | Csw 159935
-- **CWIST reactor (drain_chunk=8)** — cooperative queuing for cwist_async_defer completions within a big io_uring batch (issue #25, docs/cooperative-queuing.md); this workload has no cwist_async_defer traffic to interleave, so parity with the plain CWIST row above is the expected result, not a null finding — the tail-latency win is isolated directly in tests/bench_cooperative_queuing.c: 191843 req/s | Latency 2.11ms (P90 4.12ms, P99 6.82ms, P99.999 12.19ms) | RSS 6844KiB | Csw 170859
-- **Axum**: 159847 req/s | Latency 2.46ms (P90 4.28ms, P99 6.43ms, P99.999 12.27ms) | RSS 15896KiB | Csw 302538
-- **Gin (Go)**: 120690 req/s | Latency 4.28ms (P90 10.23ms, P99 21.61ms, P99.999 47.83ms) | RSS 30380KiB | Csw 334384
-- **Spring Boot**: 75836 req/s | Latency 5.23ms (P90 7.15ms, P99 10.62ms, P99.999 59.89ms) | RSS 1313152KiB | Csw 335441
+- **CWIST Classic pool**: 190262 req/s | Latency 1.26ms (P90 2.78ms, P99 5.87ms, P99.999 26.23ms) | RSS 17404KiB | Csw 1850857
+- **CWIST reactor**: 234681 req/s | Latency 1.76ms (P90 3.51ms, P99 5.91ms, P99.999 11.55ms) | RSS 7112KiB | Csw 250514
+- **CWIST reactor (arena_max=1)** — glibc arena cap adopted in PR #35 after mimalloc was tried and refuted (issue #25); this line confirms the decision on every run: 234639 req/s | Latency 1.74ms (P90 3.42ms, P99 5.72ms, P99.999 11.45ms) | RSS 8272KiB | Csw 266325
+- **CWIST reactor (drain_chunk=8)** — cooperative queuing for cwist_async_defer completions within a big io_uring batch (issue #25, docs/cooperative-queuing.md); this workload has no cwist_async_defer traffic to interleave, so parity with the plain CWIST row above is the expected result, not a null finding — the tail-latency win is isolated directly in tests/bench_cooperative_queuing.c: 237279 req/s | Latency 1.72ms (P90 3.36ms, P99 5.63ms, P99.999 13.04ms) | RSS 6920KiB | Csw 292022
+- **Axum**: 194514 req/s | Latency 2.04ms (P90 3.60ms, P99 5.56ms, P99.999 11.50ms) | RSS 16460KiB | Csw 351140
+- **Gin (Go)**: 142598 req/s | Latency 4.68ms (P90 12.36ms, P99 29.26ms, P99.999 70.56ms) | RSS 30960KiB | Csw 725941
+- **Spring Boot**: 99713 req/s | Latency 4.03ms (P90 5.49ms, P99 9.59ms, P99.999 52.95ms) | RSS 1335716KiB | Csw 492602
 
 **Spring runtime environment**
 
@@ -246,11 +246,11 @@ GitHub hands out a different CPU model per run, which moves these numbers more t
 
 | Runner CPU | Runs | CWIST Classic ms | CWIST ms | Axum ms | CWIST req/s | Axum req/s |
 |---|---:|---:|---:|---:|---:|---:|
-| AMD EPYC 7763 64-Core Processor | 53 | 2.04 | 2.98 | 3.54 | 141,216 | 110,464 |
+| AMD EPYC 7763 64-Core Processor | 52 | 2.04 | 2.98 | 3.54 | 141,359 | 110,544 |
 | AMD EPYC 9V74 80-Core Processor | 24 | 1.63 | 2.64 | 2.66 | 179,591 | 147,481 |
 | Intel(R) Xeon(R) 6973P-C | 9 | 0.98 | 1.65 | 1.64 | 312,637 | 244,033 |
 | AMD EPYC 9V45 96-Core Processor | 8 | 1.27 | 2.31 | 2.04 | 223,637 | 195,375 |
-| INTEL(R) XEON(R) PLATINUM 8573C | 5 | 1.15 | 1.89 | 1.92 | 263,319 | 203,941 |
+| INTEL(R) XEON(R) PLATINUM 8573C | 6 | 1.19 | 1.82 | 1.94 | 259,096 | 203,552 |
 | Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz | 1 | 1.41 | 2.43 | 2.39 | 215,862 | 165,616 |
 <!-- WEBSERVER_BENCHMARKS:END -->
 
