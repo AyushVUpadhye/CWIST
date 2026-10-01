@@ -23,6 +23,7 @@
 #include <cwist/sys/app/shutdown.h>
 #include <cwist/sys/job/scheduler.h>
 #include <cwist/core/mem/alloc.h>
+#include "async_internal.h"
 #include <stdatomic.h>
 #include <fcntl.h>
 #include <sched.h>
@@ -44,6 +45,8 @@ struct cwist_async {
     bool keep_alive;
     struct cwist_app *app;
     cwist_reactor_t *reactor;     /* NULL on the classic pool path. */
+    uint64_t reactor_gen;         /* Pool generation @c reactor belongs to. */
+    bool orphaned;                /* @c reactor was destroyed before completion. */
     cwist_http_async_conn_t *conn;
     void *https_conn;             /* cwist_https_connection * on TLS path. */
     cwist_h2_async_queue *h2_queue; /* Per-connection queue on the H2 path. */
@@ -90,6 +93,7 @@ cwist_async *cwist_async_defer(cwist_http_request *req, cwist_http_response *res
     cwist_http_async_conn_t *conn = (cwist_http_async_conn_t *)req->async_conn;
     if (conn) {
         a->reactor = conn->reactor;
+        a->reactor_gen = cwist_http_reactor_generation();
         a->conn = conn;
     }
     if (req->https_conn) {
@@ -167,6 +171,11 @@ static void cwist_async_complete(cwist_async *a) {
         } else {
             cwist_https_close_connection(conn);
         }
+    } else if (a->orphaned) {
+        /* The server stopped and destroyed the worker reactor this
+         * connection was parked on: nothing can send on it or re-arm it any
+         * more, so close it. */
+        cwist_http_async_close_orphan(a->client_fd, a->conn);
     } else if (a->reactor) {
         /* Resumable write: on a partial send the remainder is parked on a
          * POLLOUT slot and the reactor thread is freed immediately; the
@@ -201,8 +210,11 @@ static void cwist_async_reactor_complete(void *ctx) {
 
 static void cwist_async_finish(cwist_async *a) {
     if (a->reactor) {
-        if (cwist_reactor_post(a->reactor, &a->post)) return;
-        /* Reactor already gone (shutdown): fall through to inline close-out. */
+        if (cwist_http_reactor_post_live(a->reactor, a->reactor_gen, &a->post)) return;
+        /* The pool that owned the reactor has been destroyed (the server
+         * stopped while this exchange was pending): the reactor is freed, so
+         * close out inline without it. */
+        a->orphaned = true;
     }
     cwist_async_complete(a);
 }
