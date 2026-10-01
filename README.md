@@ -157,6 +157,7 @@ Latest Web Server Benchmark (wrk -t12 -c400 -d10s (after 10s warmup, warmup disc
 - **CWIST reactor (arena_max=1)** — glibc arena cap adopted in PR #35 after mimalloc was tried and refuted (issue #25); this line confirms the decision on every run: 234639 req/s | Latency 1.74ms (P90 3.42ms, P99 5.72ms, P99.999 11.45ms) | RSS 8272KiB | Csw 266325
 - **CWIST reactor (drain_chunk=8)** — cooperative queuing for cwist_async_defer completions within a big io_uring batch (issue #25, docs/cooperative-queuing.md); this workload has no cwist_async_defer traffic to interleave, so parity with the plain CWIST row above is the expected result, not a null finding — the tail-latency win is isolated directly in tests/bench_cooperative_queuing.c: 237279 req/s | Latency 1.72ms (P90 3.36ms, P99 5.63ms, P99.999 13.04ms) | RSS 6920KiB | Csw 292022
 - **Axum**: 194514 req/s | Latency 2.04ms (P90 3.60ms, P99 5.56ms, P99.999 11.50ms) | RSS 16460KiB | Csw 351140
+- **Actix (Rust)**: 185244 req/s | Latency 2.76ms (P90 2.80ms, P99 2.84ms) | from the-benchmarker public dataset (c≈512)
 - **Gin (Go)**: 142598 req/s | Latency 4.68ms (P90 12.36ms, P99 29.26ms, P99.999 70.56ms) | RSS 30960KiB | Csw 725941
 - **Spring Boot**: 99713 req/s | Latency 4.03ms (P90 5.49ms, P99 9.59ms, P99.999 52.95ms) | RSS 1335716KiB | Csw 492602
 
@@ -248,7 +249,7 @@ memory management to the user. CWIST ships the whole stack:
 
 The benchmark results above demonstrate the advantages in latency, memory footprint, and determinism:
 
-1. **Latency & Throughput.** Under 400 concurrency (`wrk -t12 -c400`, CI run above), both CWIST paths deliver lower average latency and higher throughput than the Axum, Gin, and Spring Boot rows of the same run; the tuned low-latency profile (`wrk -t4 -c100`) shows the sub-millisecond median.
+1. **Latency & Throughput.** Under 400 concurrency (`wrk -t12 -c400`, CI run above), both CWIST paths deliver lower average latency and higher throughput than the Axum, Actix, Gin, and Spring Boot rows of the same run; the tuned low-latency profile (`wrk -t4 -c100`) shows the sub-millisecond median.
 2. **Memory Efficiency.** CWIST's resident footprint is a fraction of the Go row and orders of magnitude below the JVM row of the same CI run. In high-density container environments, this significantly reduces memory consumption across thousands of instances.
 3. **Tail Latency & Predictability.** Zero-copy framing, thread-pinned worker execution, and generational arena allocators minimize latency variance and GC pauses.
 4. **Zero-Overhead FFI.** Production libraries in finance, game servers, machine learning, and systems software written in C/C++ link directly into CWIST with zero FFI conversion or runtime bridge penalty.
