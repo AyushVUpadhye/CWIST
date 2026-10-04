@@ -185,20 +185,20 @@ missing optional API does not prevent an HTTP/3 build.
   ./server
 
 <!-- BENCHMARKS:START -->
-Latest automated benchmark: **Darwin**: 12.26 M leases/s, 130.71% CPU, 758112 KiB RSS.
+Latest automated benchmark: **Darwin**: 16.58 M leases/s, 125.23% CPU, 696720 KiB RSS.
 
 ![CWIST benchmark trends](docs/benchmark-trends.svg)
 <!-- BENCHMARKS:END -->
 
 <!-- WEBSERVER_BENCHMARKS:START -->
 Latest Web Server Benchmark (wrk -t12 -c400 -d10s (after 10s warmup, warmup discarded)):
-- **CWIST Classic pool**: 195091 req/s | Latency 1.21ms (P90 2.44ms, P99 5.37ms, P99.999 23.87ms) | RSS 60008KiB | Csw 1891803
-- **CWIST reactor**: 228531 req/s | Latency 1.84ms (P90 3.79ms, P99 6.73ms, P99.999 16.45ms) | RSS 20500KiB | Csw 195937
-- **CWIST reactor (arena_max=1)** — glibc arena cap adopted in PR #35 after mimalloc was tried and refuted (issue #25); this line confirms the decision on every run: 227007 req/s | Latency 1.94ms (P90 3.95ms, P99 9.29ms, P99.999 21.75ms) | RSS 25260KiB | Csw 195215
-- **CWIST reactor (drain_chunk=8)** — cooperative queuing for cwist_async_defer completions within a big io_uring batch (issue #25, docs/cooperative-queuing.md); this workload has no cwist_async_defer traffic to interleave, so parity with the plain CWIST row above is the expected result, not a null finding — the tail-latency win is isolated directly in tests/bench_cooperative_queuing.c: 226992 req/s | Latency 1.82ms (P90 3.68ms, P99 6.15ms, P99.999 12.47ms) | RSS 20280KiB | Csw 209221
-- **Axum**: 189752 req/s | Latency 2.11ms (P90 3.85ms, P99 6.00ms, P99.999 11.76ms) | RSS 16204KiB | Csw 344007
-- **Gin (Go)**: 153070 req/s | Latency 3.39ms (P90 8.21ms, P99 16.33ms, P99.999 38.14ms) | RSS 29832KiB | Csw 461161
-- **Spring Boot**: 119551 req/s | Latency 3.32ms (P90 4.90ms, P99 7.40ms, P99.999 39.35ms) | RSS 1316832KiB | Csw 409989
+- **CWIST Classic pool**: 105595 req/s | Latency 2.24ms (P90 4.57ms, P99 9.60ms, P99.999 40.12ms) | RSS 60512KiB | Csw 1002307
+- **CWIST reactor**: 131006 req/s | Latency 2.98ms (P90 5.13ms, P99 7.74ms, P99.999 12.73ms) | RSS 20084KiB | Csw 129628
+- **CWIST reactor (arena_max=1)** — glibc arena cap adopted in PR #35 after mimalloc was tried and refuted (issue #25); this line confirms the decision on every run: 133917 req/s | Latency 2.93ms (P90 5.09ms, P99 7.72ms, P99.999 17.43ms) | RSS 24388KiB | Csw 129478
+- **CWIST reactor (drain_chunk=8)** — cooperative queuing for cwist_async_defer completions within a big io_uring batch (issue #25, docs/cooperative-queuing.md); this workload has no cwist_async_defer traffic to interleave, so parity with the plain CWIST row above is the expected result, not a null finding — the tail-latency win is isolated directly in tests/bench_cooperative_queuing.c: 133215 req/s | Latency 2.95ms (P90 5.15ms, P99 8.19ms, P99.999 22.17ms) | RSS 20332KiB | Csw 126179
+- **Axum**: 108081 req/s | Latency 3.62ms (P90 6.07ms, P99 8.84ms, P99.999 15.98ms) | RSS 16280KiB | Csw 224820
+- **Gin (Go)**: 74026 req/s | Latency 7.83ms (P90 19.67ms, P99 44.67ms, P99.999 94.43ms) | RSS 30324KiB | Csw 322221
+- **Spring Boot**: 43205 req/s | Latency 9.24ms (P90 11.88ms, P99 19.18ms, P99.999 88.27ms) | RSS 1325328KiB | Csw 214040
 
 **Spring runtime environment**
 
@@ -246,11 +246,11 @@ GitHub hands out a different CPU model per run, which moves these numbers more t
 
 | Runner CPU | Runs | CWIST Classic ms | CWIST ms | Axum ms | CWIST req/s | Axum req/s |
 |---|---:|---:|---:|---:|---:|---:|
-| AMD EPYC 7763 64-Core Processor | 53 | 2.04 | 2.97 | 3.54 | 141,115 | 110,623 |
+| AMD EPYC 7763 64-Core Processor | 54 | 2.04 | 2.97 | 3.54 | 140,940 | 110,544 |
 | AMD EPYC 9V74 80-Core Processor | 23 | 1.63 | 2.63 | 2.65 | 180,266 | 147,502 |
 | AMD EPYC 9V45 96-Core Processor | 9 | 1.27 | 2.19 | 2.04 | 223,612 | 194,434 |
 | Intel(R) Xeon(R) 6973P-C | 9 | 0.98 | 1.65 | 1.64 | 312,637 | 244,033 |
-| INTEL(R) XEON(R) PLATINUM 8573C | 6 | 1.19 | 1.82 | 1.94 | 259,096 | 203,552 |
+| INTEL(R) XEON(R) PLATINUM 8573C | 5 | 1.22 | 1.76 | 1.95 | 254,872 | 203,163 |
 <!-- WEBSERVER_BENCHMARKS:END -->
 
 ~~~HEAVY BENCHMARK ON CWIST APP~~~ ==> https://github.com/gg582/fly.board/blob/main/README.md
