@@ -101,6 +101,10 @@ LSQUIC_DIR = lib/lsquic
 LSQUIC_BUILD_DIR = $(LSQUIC_DIR)/build
 LSQUIC_LIB = $(LSQUIC_BUILD_DIR)/src/liblsquic/liblsquic.a
 
+USRSCTP_DIR = lib/usrsctp
+USRSCTP_BUILD_DIR = $(USRSCTP_DIR)/build
+USRSCTP_LIB = $(USRSCTP_BUILD_DIR)/usrsctplib/libusrsctp.a
+
 CURL_LIBS := $(shell pkg-config --libs libcurl 2>/dev/null)
 NGHTTP2_LIBS := $(shell pkg-config --libs libnghttp2 2>/dev/null)
 BROTLI_LIBS := $(shell pkg-config --libs libbrotlienc libbrotlicommon libbrotlidec 2>/dev/null)
@@ -138,6 +142,15 @@ SQLITE_DIR = lib/sqlite3
 CWIST_WEBTRANSPORT ?= 1
 ifeq ($(CWIST_WEBTRANSPORT),1)
     CFLAGS += -DCWIST_WEBTRANSPORT
+endif
+
+# WebRTC DataChannel (src/net/webrtc/). DataChannel-only: SDP offer/answer,
+# ICE-lite, DTLS via the vendored BoringSSL, and SCTP DataChannels (RFC 8831)
+# through the lib/usrsctp submodule running in AF_CONN raw mode tunneled over
+# DTLS. Set CWIST_WEBRTC=0 to leave it out.
+CWIST_WEBRTC ?= 1
+ifeq ($(CWIST_WEBRTC),1)
+    CFLAGS += -DCWIST_WEBRTC -I$(USRSCTP_DIR)/usrsctplib
 endif
 
 # Detect OS
@@ -699,6 +712,16 @@ EXTERNAL_LIBS = $(URIPARSER_LIB) \
                 $(BORINGSSL_SSL_LIB) \
                 $(BORINGSSL_CRYPTO_LIB)
 
+ifeq ($(CWIST_WEBRTC),1)
+    SRCS += src/net/webrtc/webrtc.c \
+            src/net/webrtc/ice.c \
+            src/net/webrtc/sdp.c \
+            src/net/webrtc/dtls.c \
+            src/net/webrtc/sctp.c
+    EXTERNAL_LIBS += $(USRSCTP_LIB)
+    LIBS += $(USRSCTP_LIB)
+endif
+
 # --- Build Targets ---
 
 all: $(LIBTTAK_LIB) $(CJSON_LIB) $(URIPARSER_LIB) $(SQLITE_DIR)/sqlite3.c $(LSQUIC_LIB) $(LIB_NAME)
@@ -715,6 +738,34 @@ $(SQLITE_DIR)/sqlite3.c:
 
 # Ensure lsquic submodule is checked out before compiling objects that need its headers
 $(OBJS): | lib/lsquic/include/lsquic.h
+
+ifeq ($(CWIST_WEBRTC),1)
+$(OBJS): | $(USRSCTP_DIR)/usrsctplib/usrsctp.h
+
+$(USRSCTP_DIR)/usrsctplib/usrsctp.h:
+	@if [ ! -f "$@" ]; then \
+		echo "Initializing usrsctp submodule..."; \
+		git submodule update --init --recursive $(USRSCTP_DIR); \
+	fi
+
+USRSCTP_REV := $(if $(wildcard $(USRSCTP_DIR)/.git),$(shell git -C $(USRSCTP_DIR) rev-parse HEAD 2>/dev/null))
+USRSCTP_STAMP = $(USRSCTP_BUILD_DIR)/.usrsctp_built_$(or $(USRSCTP_REV),unversioned)
+
+$(USRSCTP_LIB): $(USRSCTP_STAMP)
+
+$(USRSCTP_STAMP):
+	@echo "Building usrsctp..."
+	@mkdir -p $(USRSCTP_BUILD_DIR)
+	cmake -S $(USRSCTP_DIR) -B $(USRSCTP_BUILD_DIR) \
+		-DCMAKE_C_COMPILER=$(CC) \
+		-DCMAKE_BUILD_TYPE=Release \
+		-DBUILD_SHARED_LIBS=OFF \
+		-Dsctp_build_programs=OFF \
+		-Dsctp_build_fuzzer=OFF
+	cmake --build $(USRSCTP_BUILD_DIR) --target usrsctp
+	@rm -f $(USRSCTP_BUILD_DIR)/.usrsctp_built_*
+	@touch $@
+endif
 
 lib/lsquic/include/lsquic.h:
 	@if [ ! -f "$@" ]; then \
@@ -802,6 +853,7 @@ TEST_TARGETS = test_worker_affinity \
                test_app_resource_limits \
                test_classic_pool_scaling \
                test_reactor_wake \
+               test_reactor_timer \
                test_reactor_drain_chunk \
                test_latency_probe \
                test_sstring \
@@ -844,6 +896,7 @@ TEST_TARGETS = test_worker_affinity \
                test_cors \
                test_websocket \
                test_websocket_async \
+               test_webrtc \
                test_jwt \
                test_migrate \
                test_json_heal \
@@ -927,6 +980,7 @@ bench_security_pool: $(LIB_NAME) tests/bench_security_pool.c
 	$(CC) $(CFLAGS) -o bench_security_pool tests/bench_security_pool.c $(LIB_NAME) $(LIBS)
 	./bench_security_pool
 
+# WebRTC DataChannel end-to-end test (see the test_webrtc rule below).
 test: $(TEST_TARGETS)
 
 src/sys/app/app.o: src/sys/app/worker_affinity.h
@@ -951,6 +1005,14 @@ test_classic_pool_scaling: $(LIB_NAME) tests/test_classic_pool_scaling.c
 test_reactor_wake: tests/test_reactor_wake.c src/sys/io/reactor.c
 	$(CC) $(CFLAGS) -o $@ tests/test_reactor_wake.c -pthread
 	./$@
+
+# Reactor one-shot timers, on the default backend and on forced epoll.
+test_reactor_timer: tests/test_reactor_timer.c src/sys/io/reactor.c
+	$(CC) $(CFLAGS) -o $@ tests/test_reactor_timer.c -pthread
+	./$@
+ifeq ($(UNAME_S),Linux)
+	CWIST_REACTOR_BACKEND=epoll ./$@
+endif
 
 # Cooperative-queuing correctness test (issue #25): CWIST_REACTOR_DRAIN_CHUNK
 # interleaves foreign-thread post draining into a big CQE batch instead of
@@ -1462,6 +1524,36 @@ test_cookie: $(LIB_NAME) tests/test_cookie.c
 test_multipart: $(LIB_NAME) tests/test_multipart.c
 	$(CC) $(CFLAGS) -o test_multipart tests/test_multipart.c $(LIB_NAME) $(LIBS)
 	./test_multipart
+
+ifeq ($(CWIST_WEBRTC),1)
+test_webrtc: $(LIB_NAME) $(USRSCTP_LIB) tests/test_webrtc.c
+	$(CC) $(CFLAGS) -o test_webrtc tests/test_webrtc.c $(LIB_NAME) $(LIBS)
+	./test_webrtc
+
+# Loopback DataChannel benchmark: idle cost, throughput, RTT. Not part of
+# `make test`; run ./bench_webrtc [small_count] [large_count] after building.
+bench_webrtc: $(LIB_NAME) $(USRSCTP_LIB) tests/bench_webrtc.c
+	$(CC) $(CFLAGS) -o bench_webrtc tests/bench_webrtc.c $(LIB_NAME) $(LIBS)
+
+# Real-browser interop: starts example/webrtc and drives headless Chromium
+# against it (tests/browser/webrtc_chromium.mjs). Needs chromium and Node >= 22;
+# not part of `make test`. Uses port 8080.
+test_webrtc_browser: $(LIB_NAME) $(USRSCTP_LIB)
+	$(MAKE) -C example/webrtc
+	@(cd example/webrtc && exec env CWIST_WORKERS=1 ./webrtc-server > /dev/null 2>&1) & pid=$$!; \
+	sleep 1; \
+	node tests/browser/webrtc_chromium.mjs http://localhost:8080/; rc=$$?; \
+	kill $$pid 2>/dev/null; wait $$pid 2>/dev/null; \
+	exit $$rc
+
+.PHONY: test_webrtc bench_webrtc test_webrtc_browser
+else
+# CWIST_WEBRTC=0: the module and its test are compiled out.
+test_webrtc bench_webrtc test_webrtc_browser:
+	@echo "CWIST_WEBRTC=0: skipping $@"
+
+.PHONY: test_webrtc bench_webrtc test_webrtc_browser
+endif
 
 test_waf: $(LIB_NAME) tests/test_waf.c
 	$(CC) $(CFLAGS) -o test_waf tests/test_waf.c $(LIB_NAME) $(LIBS)
